@@ -12,3 +12,9 @@ compatibility_flags = [
 ]
 
 pages_build_output_dir = ".vercel/output/static"
+
+[build]
+  [build.environment]
+  # Supabase public client env for both Build and Runtime
+  NEXT_PUBLIC_SUPABASE_URL = "https://csuymzqibcyplpcwtfni.supabase.co"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzdXltenFpYmN5cGxwY3d0Zm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyMTQyNTQsImV4cCI6MjA3Mjc5MDI1NH0.wg62oyYkI-pQ1uvzswYr2WobQQWL0LJyq-aiNgcsksU"
