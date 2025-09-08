@@ -13,7 +13,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-20 backdrop-blur bg-base-bg/70 border-b border-black/10">
             <div className="flex items-center gap-3 py-3">
               <Link href="/" className="flex items-center gap-2">
-                {/* @ts-expect-error Server Component including Client child */}
                 <Logo size="md" />
               </Link>
               <nav className="flex gap-3 text-sm text-base-subtext">
