@@ -45,7 +45,8 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
         user_id: r.user_id as string,
         user_name: r.user?.name || null,
         date: r.date as string,
-        attempt_type: r.attempt_type as any
+        attempt_type: r.attempt_type as 'flashed' | 'sent',
+        fa: false
       }))
       if (mapped.length) mapped[0].fa = true
       setSends(mapped)
