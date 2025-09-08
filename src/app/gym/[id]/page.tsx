@@ -139,7 +139,22 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
     }
     setForm({ name: '', type: 'boulder', grade: 5, location: '', setter: '', color: 'blue', dyno: false, section_id: '', active_status: true })
     const { data } = await supabase.from('climbs').select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)').eq('gym_id', gid).order('created_at', { ascending: false })
-    setClimbs(data || [])
+    const normalized: Climb[] = ((data || []) as any[]).map((x: any) => ({
+      id: x.id,
+      name: x.name,
+      grade: x.grade,
+      type: x.type,
+      location: x.location,
+      setter: x.setter,
+      color: x.color,
+      dyno: x.dyno,
+      section_id: x.section_id,
+      active_status: x.active_status,
+      section: Array.isArray(x.section)
+        ? (x.section[0] ? { name: String(x.section[0]?.name ?? '') } : null)
+        : (x.section ? { name: String(x.section?.name ?? '') } : null)
+    }))
+    setClimbs(normalized)
   }
 
   async function claimAdmin() {
