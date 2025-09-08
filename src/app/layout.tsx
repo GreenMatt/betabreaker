@@ -9,7 +9,6 @@ import AppShell from './AppShell'
 export const metadata: Metadata = {
   title: 'BetaBreaker — Climbing Community PWA',
   description: 'Log climbs, train smarter, and compete with friends.',
-  themeColor: '#8A2BE2',
   manifest: '/manifest.webmanifest'
 }
 
@@ -35,3 +34,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   )
 }
+
