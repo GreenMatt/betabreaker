@@ -2,7 +2,8 @@
 export const runtime = 'edge'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabaseClient'
+// Lazy-load Supabase on the client to avoid Edge runtime pulling Node builtins
+const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
 type Gym = { id: string; name: string; location: string | null }
 type Climb = { id: string; name: string; grade: number | null; type: 'boulder' | 'top_rope' | 'lead'; location: string | null; setter: string | null; color: string | null; dyno: boolean | null; section_id: string | null; section?: { name: string } | null }
@@ -30,6 +31,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     let mounted = true
     ;(async () => {
+      const supabase = await getSupabase()
       setLoading(true)
       setError(null)
       const [gRes, cRes, aRes, sRes] = await Promise.all([
@@ -98,12 +100,14 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
 
   async function loadActivity() {
     setActivityLoading(true)
+    const supabase = await getSupabase()
     const { data, error } = await supabase.rpc('get_gym_activity', { gid, page_size: 20, page: 0 })
     if (!error) setActivity(data || [])
     setActivityLoading(false)
   }
 
   async function loadFollowing() {
+    const supabase = await getSupabase()
     const { data: uidRes } = await supabase.auth.getUser()
     const me = uidRes.user?.id
     if (!me) { setFollowingUsers([]); return }
@@ -133,6 +137,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       section_id: form.section_id || null,
       active_status: form.active_status
     }
+    const supabase = await getSupabase()
     const { error } = await supabase.from('climbs').insert(payload)
     if (error) {
       alert(error.message)
@@ -160,6 +165,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
 
   async function claimAdmin() {
     setClaiming(true)
+    const supabase = await getSupabase()
     const { data, error } = await supabase.rpc('claim_gym_admin', { gid })
     setClaiming(false)
     if (error) {
@@ -172,6 +178,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
   async function deleteClimb(id: string) {
     if (!isAdmin) return
     if (!confirm('Delete this climb? This cannot be undone.')) return
+    const supabase = await getSupabase()
     const { error } = await supabase.from('climbs').delete().eq('id', id)
     if (error) {
       alert(error.message)
@@ -188,6 +195,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       const file = input.files?.[0]
       if (!file) return
       try {
+        const supabase = await getSupabase()
         const base64 = await compressToBase64(file, 1280, 0.8)
         const { data, error } = await supabase.from('climb_photos').insert({ climb_id: climbId, image_base64: base64 }).select('id, climb_id, image_base64, created_at').single()
         if (error) alert(error.message)
@@ -216,6 +224,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
   }
 
   async function quickLog(climbId: string, defaults?: { attempts?: number, rating?: number, notes?: string, grade?: number }) {
+    const supabase = await getSupabase()
     const { data: userRes } = await supabase.auth.getUser()
     const uid = userRes.user?.id
     if (!uid) { alert('Please sign in'); return }
@@ -311,6 +320,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
               <div key={c.id} className="group relative rounded-xl overflow-hidden border border-white/5 bg-base-panel shadow min-h-[320px]">
                 <button className="block w-full" onClick={async () => {
                   // Load full gallery for this climb
+                  const supabase = await getSupabase()
                   const { data } = await supabase.from('climb_photos').select('id, climb_id, image_base64, created_at').eq('climb_id', c.id).order('created_at', { ascending: false })
                   setLightbox({ climbId: c.id, idx: 0, photos: (data || []) as Photo[] })
                 }}>
@@ -497,6 +507,7 @@ function SectionRow({ section, onRenamed, onDeleted }: { section: Section, onRen
   const [busy, setBusy] = useState(false)
   async function save() {
     setBusy(true)
+    const supabase = await getSupabase()
     const { error } = await supabase.from('gym_sections').update({ name }).eq('id', section.id)
     setBusy(false)
     if (error) { alert(error.message); return }
@@ -506,6 +517,7 @@ function SectionRow({ section, onRenamed, onDeleted }: { section: Section, onRen
   async function remove() {
     if (!confirm('Delete section? Climbs will keep their previous location text.')) return
     setBusy(true)
+    const supabase = await getSupabase()
     const { error } = await supabase.from('gym_sections').delete().eq('id', section.id)
     setBusy(false)
     if (error) { alert(error.message); return }
@@ -549,6 +561,7 @@ function EditClimbModal({ initial, onClose, onSaved, gid, sections }: { initial:
       location: selSection?.name || form.location || null,
       active_status: form.active_status !== false
     }
+    const supabase = await getSupabase()
     const { data, error } = await supabase.from('climbs').update(update).eq('id', initial.climb.id).select('id,name,grade,type,location,setter,color,dyno,section_id,section:gym_sections(name)').single()
     setBusy(false)
     if (error) { alert(error.message); return }
@@ -613,6 +626,7 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
 
   useEffect(() => {
     (async () => {
+      const supabase = await getSupabase()
       const { data: uidRes } = await supabase.auth.getUser()
       const me = uidRes.user?.id
       if (!me || me === item.user_id) { setFollowing(null); return }
@@ -624,6 +638,7 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
   async function toggleBump() {
     setBusy(true)
     try {
+      const supabase = await getSupabase()
       const { data: uidRes } = await supabase.auth.getUser()
       const me = uidRes.user?.id
       if (!me) throw new Error('Sign in')
@@ -643,6 +658,7 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
   async function sendComment() {
     setBusy(true)
     try {
+      const supabase = await getSupabase()
       const { data: uidRes } = await supabase.auth.getUser()
       const me = uidRes.user?.id
       if (!me) throw new Error('Sign in')
@@ -655,6 +671,7 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
   }
 
   async function toggleFollow() {
+    const supabase = await getSupabase()
     const { data: uidRes } = await supabase.auth.getUser()
     const me = uidRes.user?.id
     if (!me) return alert('Sign in')

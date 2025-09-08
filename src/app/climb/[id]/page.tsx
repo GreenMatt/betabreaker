@@ -2,7 +2,7 @@
 export const runtime = 'edge'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
+const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
 type Climb = { id: string; name: string; grade: number | null; type: 'boulder'|'top_rope'|'lead'; color: string | null; dyno: boolean | null; gym: { id: string, name: string } }
 
@@ -20,6 +20,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     let mounted = true
     ;(async () => {
+      const supabase = await getSupabase()
       const { data: c } = await supabase
         .from('climbs')
         .select('id,name,grade,type,color,dyno,gym:gyms(id,name)')
@@ -66,7 +67,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
   }, [comments])
 
   async function addComment(body: string, parent_id?: string, is_setter?: boolean) {
-    const { data: u } = await supabase.auth.getUser(); const uid = u.user?.id
+    const supabase = await getSupabase(); const { data: u } = await supabase.auth.getUser(); const uid = u.user?.id
     if (!uid) return alert('Sign in')
     const { data, error } = await supabase
       .from('climb_comments')
