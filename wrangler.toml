@@ -6,9 +6,8 @@ compatibility_date = "2024-09-01"
 # Cloudflare UI may show the generic "node" flag instead of "nodejs_compat".
 # Include both to cover all environments, and ensure process.env is populated.
 compatibility_flags = [
-  "node",                       # alias for Node.js compatibility
-  "nodejs_compat",              # legacy name (kept for safety)
-  "nodejs_compat_populate_process_env" # ok
+  "nodejs_compat",
+  "nodejs_compat_populate_process_env"
 ]
 
 pages_build_output_dir = ".vercel/output/static"
