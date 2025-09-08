@@ -9,3 +9,5 @@ compatibility_flags = [
   "nodejs_compat",              # legacy name (kept for safety)
   "nodejs_compat_populate_process_env" # ok
 ]
+
+pages_build_output_dir = ".vercel/output/static"
