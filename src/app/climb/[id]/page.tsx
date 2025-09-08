@@ -1,4 +1,5 @@
 "use client"
+export const runtime = 'edge'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'

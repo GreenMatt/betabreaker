@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import AuthButtons from '@/components/AuthButtons'
 import { supabase } from '@/lib/supabaseClient'
+export const runtime = 'edge'
 
 export default function ProfilePage({ params }: { params: { id: string } }) {
   const id = params.id
