@@ -42,7 +42,22 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       else setGym(gRes.data)
       if (cRes.error) setError(cRes.error.message)
       else {
-        const list = cRes.data || []
+        const raw = (cRes.data || []) as any[]
+        // Normalize section to object (not array) to match Climb type
+        const list: Climb[] = raw.map((x: any) => ({
+          id: x.id,
+          name: x.name,
+          grade: x.grade,
+          type: x.type,
+          location: x.location,
+          setter: x.setter,
+          color: x.color,
+          dyno: x.dyno,
+          section_id: x.section_id,
+          section: Array.isArray(x.section)
+            ? (x.section[0] ? { name: String(x.section[0]?.name ?? '') } : null)
+            : (x.section ? { name: String(x.section?.name ?? '') } : null)
+        }))
         setClimbs(list)
         const ids = list.map((x: any) => x.id)
         if (ids.length) {
