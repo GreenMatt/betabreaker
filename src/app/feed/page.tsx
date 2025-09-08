@@ -392,15 +392,19 @@ function FollowRow({ item, onLocalUpdate, comments, commentCount }: { item: Foll
   const [bumped, setBumped] = useState(!!item.bumped)
   const [comment, setComment] = useState('')
   const [showComment, setShowComment] = useState(false)
+  const [localComments, setLocalComments] = useState(comments)
+  const [localCommentCount, setLocalCommentCount] = useState(commentCount)
+  useEffect(() => { setLocalComments(comments) }, [comments])
+  useEffect(() => { setLocalCommentCount(commentCount) }, [commentCount])
   return (
     <div className="card">
       <div className="text-sm text-base-subtext">{new Date(item.created_at).toLocaleString()}</div>
       <div className="font-semibold">{item.user_name || 'Climber'} logged {item.attempt_type} on {item.climb_name}</div>
       <div className="text-xs text-base-subtext">{item.type} • Grade {item.grade ?? '-'} • {item.gym_name}</div>
       {item.notes && <div className="mt-1 text-sm">{item.notes}</div>}
-      {comments.length > 0 && (
+      {localComments.length > 0 && (
         <div className="mt-2 grid gap-2">
-          {comments.slice(0, 2).map((c, i) => (
+          {localComments.slice(0, 2).map((c, i) => (
             <div key={i} className="text-sm">
               <span className="font-medium">{c.user_name || 'User'}:</span> {c.comment}
             </div>
