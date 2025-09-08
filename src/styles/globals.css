@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  height: 100%;
+}
+body {
+  background: theme('colors.base.bg');
+  color: theme('colors.base.text');
+}
+
+.btn-primary {
+  @apply bg-neon-purple hover:bg-neon-purpleDark text-white font-semibold px-4 py-2 rounded-lg shadow-glow transition;
+}
+
+.card {
+  @apply bg-base-panel rounded-xl p-4 border border-black/10 shadow;
+}
+
+.input {
+  @apply bg-base-panel text-base-text border border-black/10 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neon-purple/60;
+}
+
+/* Ensure only a single comment bubble appears per action row */
+.comment-bubble ~ .comment-bubble {
+  display: none;
+}
