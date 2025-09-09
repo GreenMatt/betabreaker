@@ -3,7 +3,7 @@
 This repo scaffolds a Progressive Web App for gym climbing: boulder, top rope, and lead. It includes Supabase integration, auth (Google/Facebook/Email), offline-first quick logging, and placeholders for social, gamification, and admin features.
 
 ## Tech Stack
-- Next.js 14 (App Router, TypeScript)
+- Next.js 14 (App Router, TypeScript).
 - Tailwind CSS (neon purple theme)
 - Supabase (DB, Auth, Realtime, Storage)
 - PWA: manifest + service worker with basic cache
