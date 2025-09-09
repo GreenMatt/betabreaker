@@ -655,6 +655,7 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
   const [comments, setComments] = useState<any[]>(Array.isArray(item.comments) ? item.comments : [])
   const [showAll, setShowAll] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [openComments, setOpenComments] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -738,43 +739,46 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
         </div>
       </div>
       {item.notes && <div className="mt-1 text-sm">{item.notes}</div>}
-      {comments.length > 0 && (
-        <div className="mt-2 grid gap-2">
-          {(showAll ? comments : comments.slice(0, 2)).map((c, i) => (
-            <div key={i} className="text-sm">
-              <span className="font-medium">{c.user_name || 'User'}:</span> {c.comment}
+      <div className="mt-3 rounded-lg border border-white/10 bg-white/5">
+        <button type="button" className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-white/10 rounded-t-lg" onClick={() => setOpenComments(v => !v)}>
+          <span className="font-medium">Comments{comments.length ? ` (${comments.length})` : ''}</span>
+          <span className="text-base-subtext">{openComments ? 'Hide' : 'Show'}</span>
+        </button>
+        {openComments && (
+          <div className="px-3 pb-3 pt-1 grid gap-2">
+            {(showAll ? comments : comments.slice(0, 2)).map((c, i) => (
+              <div key={i} className="flex">
+                <div className="max-w-full rounded-lg bg-black/30 px-3 py-2 text-sm">
+                  <span className="font-medium">{c.user_name || 'User'}:</span> {c.comment}
+                </div>
+              </div>
+            ))}
+            {comments.length > 2 && (
+              <button className="text-xs text-base-subtext text-left" onClick={async () => {
+                if (!showAll) {
+                  const supabase = await getSupabase()
+                  const { data } = await supabase
+                    .from('bumps')
+                    .select('comment, created_at, user:users(name, profile_photo)')
+                    .eq('log_id', item.id)
+                    .not('comment', 'is', null)
+                    .order('created_at', { ascending: false })
+                  const all = (data || []).map((r: any) => ({
+                    user_name: r.user?.name,
+                    profile_photo: r.user?.profile_photo,
+                    comment: r.comment,
+                    created_at: r.created_at
+                  }))
+                  setComments(all)
+                }
+                setShowAll(v => !v)
+              }}>{showAll ? 'Show less' : `View more comments (${comments.length})`}</button>
+            )}
+            <div className="flex items-center gap-2">
+              <input className="input flex-1" placeholder="Say something nice (optional)" value={comment} onChange={e => setComment(e.target.value)} />
+              <button className="btn-primary" disabled={busy || !comment.trim()} onClick={async () => { if (!openComments) setOpenComments(true); await sendComment() }}>Send</button>
             </div>
-          ))}
-          {comments.length > 2 && (
-            <button className="text-xs text-base-subtext text-left" onClick={async () => {
-              if (!showAll) {
-                // Fetch full list
-                const { data } = await supabase
-                  .from('bumps')
-                  .select('comment, created_at, user:users(name, profile_photo)')
-                  .eq('log_id', item.id)
-                  .not('comment', 'is', null)
-                  .order('created_at', { ascending: false })
-                const all = (data || []).map((r: any) => ({
-                  user_name: r.user?.name,
-                  profile_photo: r.user?.profile_photo,
-                  comment: r.comment,
-                  created_at: r.created_at
-                }))
-                setComments(all)
-              }
-              setShowAll(v => !v)
-            }}>{showAll ? 'Show less' : `View more comments (${comments.length})`}</button>
-          )}
-        </div>
-      )}
-      <div className="mt-2 flex items-center gap-2">
-        <button className="text-base-subtext hover:text-base-text text-sm" onClick={() => setShowComment(v => !v)}>{showComment ? 'Cancel' : 'Comment'}</button>
-        {showComment && (
-          <>
-            <input className="input flex-1" placeholder="Say something nice (optional)" value={comment} onChange={e => setComment(e.target.value)} />
-            <button className="btn-primary" disabled={busy || !comment.trim()} onClick={sendComment}>Send</button>
-          </>
+          </div>
         )}
       </div>
     </div>
