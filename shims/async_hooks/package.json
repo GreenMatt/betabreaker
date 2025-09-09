@@ -1,0 +1,9 @@
+{
+  "name": "async_hooks",
+  "version": "1.0.0",
+  "description": "Edge-safe shim for Node's async_hooks (AsyncLocalStorage only)",
+  "main": "index.js",
+  "module": "index.js",
+  "type": "commonjs"
+}
+
