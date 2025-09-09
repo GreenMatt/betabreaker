@@ -286,7 +286,7 @@ function SendLogModal({ climbId, onClose }: { climbId: string, onClose: () => vo
           </div>
           <textarea className="input" placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} />
           <div className="flex items-center justify-end gap-2">
-            <button className="btn-primary" disabled={busy}>{busy ? 'SavingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦' : 'Save'}</button>
+            <button className="btn-primary" disabled={busy}>{busy ? 'Saving\\u2026' : 'Save'}</button>
           </div>
         </form>
       </div>
@@ -299,12 +299,13 @@ function StarRating({ value, onChange }: { value: 1|2|3|4|5, onChange: (v: 1|2|3
     <div className="flex">
       {[1,2,3,4,5].map((n) => (
         <button key={n} type="button" onClick={() => onChange(n as any)} className="px-1">
-          <span className={n <= value ? 'text-yellow-400' : 'text-base-subtext'}>ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦</span>
+          <span className={n <= value ? "text-yellow-400" : "text-base-subtext"}>{n <= value ? "\u2605" : "\u2606"}</span>
         </button>
       ))}
     </div>
   )
 }
+
 
 
 
