@@ -255,6 +255,7 @@ function SendLogModal({ climbId, onClose }: { climbId: string, onClose: () => vo
       onClose()
       alert('Logged!')
     } catch (err: any) { alert(err?.message || 'Failed') } finally { setBusy(false) }
+  }
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm grid place-items-center p-4" onClick={onClose}>
       <div className="w-full max-w-lg" onClick={e => e.stopPropagation()}>
