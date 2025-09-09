@@ -15,7 +15,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Link href="/" className="flex items-center gap-2">
                 <Logo size="md" />
               </Link>
-              <nav className=\"hidden md:flex gap-3 text-sm text-base-subtext\">
+              <nav className="hidden md:flex gap-3 text-sm text-base-subtext">
                 <Link href="/gym">Gym</Link>
                 <Link href="/log">Quick Log</Link>
                 <Link href="/feed">Feed</Link>
