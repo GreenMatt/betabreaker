@@ -104,6 +104,29 @@ try {
 
 console.log('[fix-cf-dist] Completed helper placement and verification.');
 
+// Rewrite async_hooks imports in the generated worker entry to point to our shim
+try {
+  const workerIndex = path.join(workerDir, 'index.js');
+  if (fs.existsSync(workerIndex)) {
+    let code = fs.readFileSync(workerIndex, 'utf8');
+    const before = code;
+    // CommonJS require pattern produced by bundlers
+    code = code.replace(/require\(["']async_hooks["']\)/g, "require('__next-on-pages-dist__/functions/async_hooks.js')");
+    // ESM import pattern, if present
+    code = code.replace(/from\s+["']async_hooks["']/g, "from '__next-on-pages-dist__/functions/async_hooks.js'");
+    if (code !== before) {
+      fs.writeFileSync(workerIndex, code, 'utf8');
+      console.log('[fix-cf-dist] Patched _worker.js/index.js to rewrite async_hooks imports');
+    } else {
+      console.log('[fix-cf-dist] No async_hooks import found in _worker.js/index.js');
+    }
+  } else {
+    console.warn('[fix-cf-dist] _worker.js/index.js not found for async_hooks rewrite');
+  }
+} catch (e) {
+  console.warn('[fix-cf-dist] Failed to rewrite async_hooks in worker index:', e?.message || e);
+}
+
 // Ensure per-route async_hooks shims next to each generated *.func.js
 try {
   const functionsRoot = path.join(workerDir, '__next-on-pages-dist__', 'functions');
