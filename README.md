@@ -26,6 +26,18 @@ This repo scaffolds a Progressive Web App for gym climbing: boulder, top rope, a
    - `npm install`
    - `npm run dev`
 
+## Deploy to Cloudflare Pages
+- Build command: `npm run build:cf`
+- Output directory: `.vercel/output/static`
+- Environment variables (Build):
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- wrangler config: see `wrangler.toml` (includes `compatibility_date` and `nodejs_compat` flags). Ensure your Pages project picks these up; if the UI shows a `node` flag, keep it enabled.
+
+Notes:
+- Use the `build:cf` script so `@cloudflare/next-on-pages` generates `.vercel/output` and Pages Functions for SSR. Using plain `next build` on Pages will not ship SSR and can cause 500s.
+- If you still see 500s, check Pages logs for function errors (often missing runtime env vars or unsupported Node APIs when `nodejs_compat` is disabled).
+
 ## App Structure
 - `src/app` — routes: dashboard, gyms, climb detail, quick log, sessions, feed, profile, leaderboards, challenges, settings, admin.
 - `src/components` — UI: auth buttons, upload button, PWA register.
@@ -57,4 +69,3 @@ RLS policies restrict writes to owners/admins and allow broad reads where approp
 ## Notes
 - This scaffold avoids extra dependencies to keep setup simple. You can add `@supabase/auth-helpers-nextjs` for deeper SSR integration later.
 - Policies are conservative; adjust per your moderation needs.
-
