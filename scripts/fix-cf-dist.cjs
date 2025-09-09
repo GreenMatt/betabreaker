@@ -103,3 +103,23 @@ try {
 }
 
 console.log('[fix-cf-dist] Completed helper placement and verification.');
+
+// Patch generated function files to reference async_hooks.js explicitly if needed
+try {
+  const idx = path.join(workerDir, '__next-on-pages-dist__', 'functions', 'index.func.js');
+  if (fs.existsSync(idx)) {
+    let srcCode = fs.readFileSync(idx, 'utf8');
+    const before = srcCode;
+    srcCode = srcCode.replace(/(__next-on-pages-dist__\/functions\/async_hooks)(["'])/g, '$1.js$2');
+    if (srcCode !== before) {
+      fs.writeFileSync(idx, srcCode, 'utf8');
+      console.log('[fix-cf-dist] Patched index.func.js to import async_hooks.js explicitly');
+    } else {
+      console.log('[fix-cf-dist] No import patch needed in index.func.js');
+    }
+  } else {
+    console.log('[fix-cf-dist] index.func.js not found under worker helpers; skipping import patch');
+  }
+} catch (e) {
+  console.warn('[fix-cf-dist] Failed to patch imports:', e?.message || e);
+}
