@@ -26,6 +26,8 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
   const [editing, setEditing] = useState<{ open: boolean, climb: Climb | null, form: any }>({ open: false, climb: null, form: null })
   const [activity, setActivity] = useState<any[]>([])
   const [activityLoading, setActivityLoading] = useState(false)
+  const [activityPage, setActivityPage] = useState(0)
+  const [activityHasMore, setActivityHasMore] = useState(true)
   const [followingUsers, setFollowingUsers] = useState<Array<{ id: string, name: string | null, profile_photo: string | null }>>([])
   const [viewTab, setViewTab] = useState<'active'|'removed'>('active')
 
@@ -104,11 +106,18 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
     return () => { mounted = false }
   }, [gid])
 
-  async function loadActivity() {
+  async function loadActivity(reset: boolean = true) {
     setActivityLoading(true)
     const supabase = await getSupabase()
-    const { data, error } = await supabase.rpc('get_gym_activity', { gid, page_size: 20, page: 0 })
-    if (!error) setActivity(data || [])
+    const pageSize = 6
+    const page = reset ? 0 : (activityPage + 1)
+    const { data, error } = await supabase.rpc('get_gym_activity', { gid, page_size: pageSize, page })
+    if (!error) {
+      const rows = (data as any[]) || []
+      setActivity(prev => reset ? rows : [...prev, ...rows])
+      setActivityPage(page)
+      setActivityHasMore(rows.length === pageSize)
+    }
     setActivityLoading(false)
   }
 
@@ -392,6 +401,11 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
           {activity.map((a) => (
             <GymActivityItem key={a.id} item={a} onChanged={() => loadActivity()} />
           ))}
+          {activityHasMore && (
+            <button className="bg-white/10 hover:bg-white/20 rounded-md px-3 py-2 text-sm" disabled={activityLoading} onClick={() => loadActivity(false)}>
+              {activityLoading ? 'Loading…' : 'Load more'}
+            </button>
+          )}
         </div>
       </div>
 

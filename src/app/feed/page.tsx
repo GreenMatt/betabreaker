@@ -46,6 +46,12 @@ export default function FeedPage() {
   const [meComments, setMeComments] = useState<Record<string, Array<{ user_name: string | null, profile_photo: string | null, comment: string, created_at: string }>>>({})
   const [followingCommentCounts, setFollowingCommentCounts] = useState<Record<string, number>>({})
   const [followingComments, setFollowingComments] = useState<Record<string, Array<{ user_name: string | null, profile_photo: string | null, comment: string, created_at: string }>>>({})
+  const PAGE_SIZE = 6
+  const [mePage, setMePage] = useState(0)
+  const [meHasMore, setMeHasMore] = useState(true)
+  const [followingPage, setFollowingPage] = useState(0)
+  const [followingHasMore, setFollowingHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
@@ -58,77 +64,13 @@ export default function FeedPage() {
     ;(async () => {
       try {
         if (tab === 'me') {
-          const { data, error } = await supabase
-            .from('climb_logs')
-            .select('id, created_at:date, attempt_type, attempts, personal_rating, notes, climb_id, climb:climbs(name, grade, type, color, gym:gyms(name))')
-            .order('date', { ascending: false })
-          if (error) throw error
-          const rows = (data as any as OwnItem[]) || []
-          if (mounted) setMe(rows)
-          const ids = rows.map(r => r.id)
-          if (ids.length && userId) {
-            const [{ data: bumps }, { data: mine }] = await Promise.all([
-              supabase.from('bumps').select('log_id').in('log_id', ids),
-              supabase.from('bumps').select('log_id').eq('user_id', userId).in('log_id', ids)
-            ])
-            const mapC: Record<string, number> = {}
-            for (const b of bumps || []) {
-              const k = (b as any).log_id as string
-              mapC[k] = (mapC[k] || 0) + 1
-            }
-            const mapM: Record<string, boolean> = {}
-            for (const m of mine || []) mapM[(m as any).log_id] = true
-            if (mounted) { setMeBumpCounts(mapC); setMeBumped(mapM) }
-          } else {
-            if (mounted) { setMeBumpCounts({}); setMeBumped({}) }
-          }
-          // Load latest comment previews and counts for My Activity
-          if (ids.length) {
-            const { data: comments } = await supabase
-              .from('bumps')
-              .select('log_id, comment, created_at, user:users(name, profile_photo)')
-              .in('log_id', ids)
-              .not('comment', 'is', null)
-              .order('created_at', { ascending: false })
-            const cCounts: Record<string, number> = {}
-            const cTop: Record<string, Array<{ user_name: string | null, profile_photo: string | null, comment: string, created_at: string }>> = {}
-            for (const r of comments || []) {
-              const lid = (r as any).log_id as string
-              cCounts[lid] = (cCounts[lid] || 0) + 1
-              const entry = { user_name: (r as any).user?.name ?? null, profile_photo: (r as any).user?.profile_photo ?? null, comment: (r as any).comment as string, created_at: (r as any).created_at as string }
-              if (!cTop[lid]) cTop[lid] = []
-              if (cTop[lid].length < 2) cTop[lid].push(entry)
-            }
-            if (mounted) { setMeCommentCounts(cCounts); setMeComments(cTop) }
-          } else {
-            if (mounted) { setMeCommentCounts({}); setMeComments({}) }
-          }
+          // Reset paging for 'me'
+          setMe([]); setMeBumpCounts({}); setMeBumped({}); setMeCommentCounts({}); setMeComments({}); setMePage(0); setMeHasMore(true)
+          await fetchMePage(0, mounted)
         } else {
-          const { data, error } = await supabase.rpc('get_following_logs', { page_size: 20, page: 0 })
-          if (error) throw error
-          const rows = (data as any as FollowItem[]) || []
-          if (mounted) setFollowing(rows)
-          const ids = rows.map(r => r.id)
-          if (ids.length) {
-            const { data: comments } = await supabase
-              .from('bumps')
-              .select('log_id, comment, created_at, user:users(name, profile_photo)')
-              .in('log_id', ids)
-              .not('comment', 'is', null)
-              .order('created_at', { ascending: false })
-            const cCounts: Record<string, number> = {}
-            const cTop: Record<string, Array<{ user_name: string | null, profile_photo: string | null, comment: string, created_at: string }>> = {}
-            for (const r of comments || []) {
-              const lid = (r as any).log_id as string
-              cCounts[lid] = (cCounts[lid] || 0) + 1
-              const entry = { user_name: (r as any).user?.name ?? null, profile_photo: (r as any).user?.profile_photo ?? null, comment: (r as any).comment as string, created_at: (r as any).created_at as string }
-              if (!cTop[lid]) cTop[lid] = []
-              if (cTop[lid].length < 2) cTop[lid].push(entry)
-            }
-            if (mounted) { setFollowingCommentCounts(cCounts); setFollowingComments(cTop) }
-          } else {
-            if (mounted) { setFollowingCommentCounts({}); setFollowingComments({}) }
-          }
+          // Reset paging for 'following'
+          setFollowing([]); setFollowingCommentCounts({}); setFollowingComments({}); setFollowingPage(0); setFollowingHasMore(true)
+          await fetchFollowingPage(0, mounted)
         }
       } catch (e: any) {
         setError(e?.message ?? 'Failed to load feed')
@@ -138,6 +80,80 @@ export default function FeedPage() {
     })()
     return () => { mounted = false }
   }, [tab, userId])
+
+  async function fetchMePage(page: number, mounted = true) {
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+    const { data, error } = await supabase
+      .from('climb_logs')
+      .select('id, created_at:date, attempt_type, attempts, personal_rating, notes, climb_id, climb:climbs(name, grade, type, color, gym:gyms(name))')
+      .order('date', { ascending: false })
+      .range(from, to)
+    if (error) throw error
+    const rows = (data as any as OwnItem[]) || []
+    setMe(prev => page === 0 ? rows : [...prev, ...rows])
+    const ids = rows.map(r => r.id)
+    setMeHasMore(rows.length === PAGE_SIZE)
+    if (ids.length && userId) {
+      const [{ data: bumps }, { data: mine }] = await Promise.all([
+        supabase.from('bumps').select('log_id').in('log_id', ids),
+        supabase.from('bumps').select('log_id').eq('user_id', userId).in('log_id', ids)
+      ])
+      const mapC: Record<string, number> = {}
+      for (const b of bumps || []) { const k = (b as any).log_id as string; mapC[k] = (mapC[k] || 0) + 1 }
+      const mapM: Record<string, boolean> = {}
+      for (const m of mine || []) mapM[(m as any).log_id] = true
+      setMeBumpCounts(prev => ({ ...prev, ...mapC }))
+      setMeBumped(prev => ({ ...prev, ...mapM }))
+    }
+    if (ids.length) {
+      const { data: comments } = await supabase
+        .from('bumps')
+        .select('log_id, comment, created_at, user:users(name, profile_photo)')
+        .in('log_id', ids)
+        .not('comment', 'is', null)
+        .order('created_at', { ascending: false })
+      const cCounts: Record<string, number> = {}
+      const cTop: Record<string, Array<{ user_name: string | null, profile_photo: string | null, comment: string, created_at: string }>> = {}
+      for (const r of comments || []) {
+        const lid = (r as any).log_id as string
+        cCounts[lid] = (cCounts[lid] || 0) + 1
+        const entry = { user_name: (r as any).user?.name ?? null, profile_photo: (r as any).user?.profile_photo ?? null, comment: (r as any).comment as string, created_at: (r as any).created_at as string }
+        if (!cTop[lid]) cTop[lid] = []
+        if (cTop[lid].length < 2) cTop[lid].push(entry)
+      }
+      setMeCommentCounts(prev => ({ ...prev, ...cCounts }))
+      setMeComments(prev => ({ ...prev, ...cTop }))
+    }
+  }
+
+  async function fetchFollowingPage(page: number, mounted = true) {
+    const { data, error } = await supabase.rpc('get_following_logs', { page_size: PAGE_SIZE, page })
+    if (error) throw error
+    const rows = (data as any as FollowItem[]) || []
+    setFollowing(prev => page === 0 ? rows : [...prev, ...rows])
+    setFollowingHasMore(rows.length === PAGE_SIZE)
+    const ids = rows.map(r => r.id)
+    if (ids.length) {
+      const { data: comments } = await supabase
+        .from('bumps')
+        .select('log_id, comment, created_at, user:users(name, profile_photo)')
+        .in('log_id', ids)
+        .not('comment', 'is', null)
+        .order('created_at', { ascending: false })
+      const cCounts: Record<string, number> = {}
+      const cTop: Record<string, Array<{ user_name: string | null, profile_photo: string | null, comment: string, created_at: string }>> = {}
+      for (const r of comments || []) {
+        const lid = (r as any).log_id as string
+        cCounts[lid] = (cCounts[lid] || 0) + 1
+        const entry = { user_name: (r as any).user?.name ?? null, profile_photo: (r as any).user?.profile_photo ?? null, comment: (r as any).comment as string, created_at: (r as any).created_at as string }
+        if (!cTop[lid]) cTop[lid] = []
+        if (cTop[lid].length < 2) cTop[lid].push(entry)
+      }
+      setFollowingCommentCounts(prev => ({ ...prev, ...cCounts }))
+      setFollowingComments(prev => ({ ...prev, ...cTop }))
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -170,6 +186,13 @@ export default function FeedPage() {
               onChanged={updated => setMe(prev => prev.map(x => x.id===updated.id? updated: x))}
             />
           ))}
+          {meHasMore && (
+            <button
+              className="bg-white/10 hover:bg-white/20 rounded-md px-3 py-2 text-sm"
+              disabled={loadingMore}
+              onClick={async () => { setLoadingMore(true); try { await fetchMePage(mePage + 1); setMePage(p => p + 1) } finally { setLoadingMore(false) } }}
+            >{loadingMore ? 'Loading…' : 'Load more'}</button>
+          )}
         </div>
       )}
 
@@ -185,6 +208,13 @@ export default function FeedPage() {
               onLocalUpdate={(u) => setFollowing(prev => prev.map(x => x.id === u.id ? u : x))}
             />
           ))}
+          {followingHasMore && (
+            <button
+              className="bg-white/10 hover:bg-white/20 rounded-md px-3 py-2 text-sm"
+              disabled={loadingMore}
+              onClick={async () => { setLoadingMore(true); try { await fetchFollowingPage(followingPage + 1); setFollowingPage(p => p + 1) } finally { setLoadingMore(false) } }}
+            >{loadingMore ? 'Loading…' : 'Load more'}</button>
+          )}
         </div>
       )}
     </div>
