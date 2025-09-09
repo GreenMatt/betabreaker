@@ -20,16 +20,19 @@ function copyRecursive(src, dest) {
 
 const root = process.cwd();
 const outRoot = path.join(root, '.vercel', 'output');
+const workerDir = path.join(outRoot, 'static', '_worker.js');
 
 const candidates = [
   path.join(outRoot, '__next-on-pages-dist__'),
   path.join(outRoot, 'functions', '__next-on-pages-dist__'),
   path.join(outRoot, 'static', '__next-on-pages-dist__'),
+  path.join(workerDir, '__next-on-pages-dist__'),
 ];
 
 const desiredTargets = [
   path.join(outRoot, 'functions', '__next-on-pages-dist__'),
   path.join(outRoot, 'static', '__next-on-pages-dist__'),
+  path.join(workerDir, '__next-on-pages-dist__'),
 ];
 
 let src = null;
@@ -50,4 +53,31 @@ for (const dest of desiredTargets) {
   console.log(`[fix-cf-dist] Ensuring helper at ${dest} (from ${src})`);
   copyRecursive(src, dest);
 }
-console.log('[fix-cf-dist] Completed helper placement for functions and static.');
+// Ensure async_hooks helper exists (work around some CLI versions missing it)
+try {
+  const functionsDir = path.join(workerDir, '__next-on-pages-dist__', 'functions');
+  const targetJS = path.join(functionsDir, 'async_hooks.js');
+  const targetMJS = path.join(functionsDir, 'async_hooks.mjs');
+  const hasAsync = fs.existsSync(targetJS) || fs.existsSync(targetMJS);
+  if (!hasAsync) {
+    ensureDir(functionsDir);
+    const shim = `// Generated shim: async_hooks polyfill for Cloudflare Pages\n` +
+`export class AsyncLocalStorage {\n` +
+`  constructor() { this._store = undefined }\n` +
+`  disable() { this._store = undefined }\n` +
+`  getStore() { return this._store }\n` +
+`  run(store, callback, ...args) { const prev = this._store; this._store = store; try { return callback(...args) } finally { this._store = prev } }\n` +
+`  exit(callback, ...args) { return callback(...args) }\n` +
+`  enterWith(store) { this._store = store }\n` +
+`}\n`;
+    fs.writeFileSync(targetJS, shim, 'utf8');
+    fs.writeFileSync(targetMJS, shim, 'utf8');
+    console.log('[fix-cf-dist] Added async_hooks shim under _worker.js helpers');
+  } else {
+    console.log('[fix-cf-dist] async_hooks helper already present');
+  }
+} catch (e) {
+  console.warn('[fix-cf-dist] Failed to ensure async_hooks shim:', e?.message || e);
+}
+
+console.log('[fix-cf-dist] Completed helper placement and verification.');
