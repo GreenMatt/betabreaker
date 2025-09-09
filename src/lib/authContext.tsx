@@ -1,5 +1,5 @@
 "use client"
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
 
@@ -30,9 +30,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const bootedRef = useRef(false)
+
+  function clearSupabaseLocal() {
+    try {
+      if (typeof localStorage === 'undefined') return
+      const keys: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (!k) continue
+        const lk = k.toLowerCase()
+        if (lk.startsWith('sb-') || lk.includes('supabase')) keys.push(k)
+      }
+      keys.forEach(k => { try { localStorage.removeItem(k) } catch {} })
+    } catch {}
+  }
 
   useEffect(() => {
     let unsub: (() => void) | undefined
+    // Safety: if bootstrap hangs (corrupt session or blocked storage), clear SB keys and continue
+    const watchdog = setTimeout(() => {
+      if (!bootedRef.current) {
+        clearSupabaseLocal()
+        setLoading(false)
+      }
+    }, 5000)
     ;(async () => {
       try {
         const { data, error } = await supabase.auth.getSession()
@@ -40,6 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(data.session)
         setUser(data.session?.user ?? null)
       } finally {
+        bootedRef.current = true
+        clearTimeout(watchdog)
         setLoading(false)
       }
     })()
@@ -51,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
     unsub = () => sub.subscription.unsubscribe()
-    return () => { unsub?.() }
+    return () => { unsub?.(); clearTimeout(watchdog) }
   }, [])
 
   const signInWith = useCallback(async (provider: Provider) => {
@@ -97,4 +121,3 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
-
