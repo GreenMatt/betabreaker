@@ -1,5 +1,4 @@
-export const runtime = 'edge'
-export const dynamic = 'force-dynamic'
+// default runtime
 
 import Link from 'next/link'
 
@@ -16,4 +15,3 @@ export default function NotFound() {
     </div>
   )
 }
-

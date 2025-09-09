@@ -6,9 +6,7 @@ import { PWARegister } from '@/components/PWARegister'
 // @ts-expect-error Server Component including Client child
 import AppShell from './AppShell'
 
-// Force the whole app to run on the Edge runtime (Cloudflare-compatible)
-export const runtime = 'edge'
-export const dynamic = 'force-dynamic'
+// Default runtime; allow Next-on-Pages to choose per route
 
 export const metadata: Metadata = {
   title: 'BetaBreaker — Climbing Community PWA',
