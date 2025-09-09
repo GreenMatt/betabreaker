@@ -1,6 +1,5 @@
-const CACHE_NAME = 'betabreaker-v2'
+const CACHE_NAME = 'betabreaker-v3'
 const OFFLINE_URLS = [
-  // Only cache static, truly offline-safe assets
   '/manifest.webmanifest'
 ]
 
@@ -23,35 +22,40 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
   const url = new URL(request.url)
 
-  // Avoid caching Next.js navigation/documents to prevent stale app shells
-  const isDocument = request.mode === 'navigate' || request.destination === 'document'
-  if (isDocument) {
-    event.respondWith(
-      fetch(request).catch(() => caches.match('/'))
-    )
-    return
-  }
+  // Never interfere with cross-origin (e.g., Supabase) or Next.js runtime/data endpoints
+  if (url.origin !== self.location.origin) return
 
-  // Network-first for JS/CSS; cache-first for other GETs
-  if (request.destination === 'script' || request.destination === 'style') {
+  // Do not handle documents, RSC/data, or any dynamic Next.js endpoints
+  const isDocument = request.mode === 'navigate' || request.destination === 'document'
+  const isNextData = url.pathname.startsWith('/_next/data') || url.pathname.startsWith('/_next/image')
+  const isRsc = url.searchParams.has('__nextDataReq') || url.pathname.startsWith('/_next/webpack-hmr')
+  if (isDocument || isNextData || isRsc) return
+
+  // Cache-first only for immutable hashed assets under /_next/static
+  if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      fetch(request).then((res) => {
+      caches.match(request).then((cached) => cached || fetch(request).then((res) => {
         const copy = res.clone()
         caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
         return res
-      }).catch(() => caches.match(request))
+      }))
     )
     return
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
-        const copy = networkResponse.clone()
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
-        return networkResponse
-      }).catch(() => cached)
-      return cached || fetchPromise
-    })
-  )
+  // Stale-while-revalidate for same-origin images, styles, and fonts
+  if (request.destination === 'image' || request.destination === 'style' || request.destination === 'font') {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const network = fetch(request).then((res) => {
+          const copy = res.clone()
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
+          return res
+        }).catch(() => cached)
+        return cached || network
+      })
+    )
+    return
+  }
+  // For everything else, let the browser handle it (no caching)
 })
