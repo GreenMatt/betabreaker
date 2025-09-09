@@ -28,4 +28,4 @@ coverage/
 *.swo
 *.orig
 *.log
-
+tmp/
