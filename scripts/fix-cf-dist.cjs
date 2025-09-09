@@ -41,8 +41,29 @@ for (const c of candidates) {
 }
 
 if (!src) {
-  console.warn('[fix-cf-dist] No __next-on-pages-dist__ folder found in .vercel/output');
-  process.exit(0);
+  console.warn('[fix-cf-dist] No __next-on-pages-dist__ folder found in .vercel/output. Creating minimal helper tree...');
+  try {
+    const minimalRoot = path.join(workerDir, '__next-on-pages-dist__');
+    const minimalFunctions = path.join(minimalRoot, 'functions');
+    ensureDir(minimalFunctions);
+    const targetJS = path.join(minimalFunctions, 'async_hooks.js');
+    const targetMJS = path.join(minimalFunctions, 'async_hooks.mjs');
+    const shim = `// Generated shim: async_hooks polyfill for Cloudflare Pages\n` +
+`export class AsyncLocalStorage {\n` +
+`  constructor() { this._store = undefined }\n` +
+`  disable() { this._store = undefined }\n` +
+`  getStore() { return this._store }\n` +
+`  run(store, callback, ...args) { const prev = this._store; this._store = store; try { return callback(...args) } finally { this._store = prev } }\n` +
+`  exit(callback, ...args) { return callback(...args) }\n` +
+`  enterWith(store) { this._store = store }\n` +
+`}\n`;
+    fs.writeFileSync(targetJS, shim, 'utf8');
+    fs.writeFileSync(targetMJS, shim, 'utf8');
+    console.log('[fix-cf-dist] Wrote minimal async_hooks shim under _worker.js helpers');
+  } catch (e) {
+    console.warn('[fix-cf-dist] Failed to create minimal helper tree:', e?.message || e);
+  }
+  // Do not exit; continue to post-check/verification below
 }
 
 for (const dest of desiredTargets) {
