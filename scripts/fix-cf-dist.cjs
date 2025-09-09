@@ -74,15 +74,13 @@ for (const dest of desiredTargets) {
   console.log(`[fix-cf-dist] Ensuring helper at ${dest} (from ${src})`);
   copyRecursive(src, dest);
 }
-// Ensure async_hooks helper exists (work around some CLI versions missing it)
+// Ensure async_hooks helper exists with a complete stub API
 try {
   const functionsDir = path.join(workerDir, '__next-on-pages-dist__', 'functions');
+  ensureDir(functionsDir);
   const targetJS = path.join(functionsDir, 'async_hooks.js');
   const targetMJS = path.join(functionsDir, 'async_hooks.mjs');
-  const hasAsync = fs.existsSync(targetJS) || fs.existsSync(targetMJS);
-  if (!hasAsync) {
-    ensureDir(functionsDir);
-    const shim = `// Generated shim: async_hooks polyfill for Cloudflare Pages\n` +
+  const shim = `// Generated shim: async_hooks polyfill for Cloudflare Pages\n` +
 `export class AsyncLocalStorage {\n` +
 `  constructor() { this._store = undefined }\n` +
 `  disable() { this._store = undefined }\n` +
@@ -90,13 +88,14 @@ try {
 `  run(store, callback, ...args) { const prev = this._store; this._store = store; try { return callback(...args) } finally { this._store = prev } }\n` +
 `  exit(callback, ...args) { return callback(...args) }\n` +
 `  enterWith(store) { this._store = store }\n` +
-`}\n`;
-    fs.writeFileSync(targetJS, shim, 'utf8');
-    fs.writeFileSync(targetMJS, shim, 'utf8');
-    console.log('[fix-cf-dist] Added async_hooks shim under _worker.js helpers');
-  } else {
-    console.log('[fix-cf-dist] async_hooks helper already present');
-  }
+`}\n` +
+`export function executionAsyncId() { return 0 }\n` +
+`export function triggerAsyncId() { return 0 }\n` +
+`export function createHook() { return { enable() {}, disable() {} } }\n` +
+`export default { AsyncLocalStorage, executionAsyncId, triggerAsyncId, createHook }\n`;
+  fs.writeFileSync(targetJS, shim, 'utf8');
+  fs.writeFileSync(targetMJS, shim, 'utf8');
+  console.log('[fix-cf-dist] Wrote async_hooks shim under _worker.js helpers');
 } catch (e) {
   console.warn('[fix-cf-dist] Failed to ensure async_hooks shim:', e?.message || e);
 }
