@@ -32,6 +32,16 @@ export default function NotificationsPage() {
           .limit(50)
         if (error) throw error
         setItems((data || []) as any)
+        // Automatically mark any unread as read when visiting
+        if ((data || []).some((n: any) => !n.read_at)) {
+          await supabase
+            .from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .eq('user_id', user.id)
+            .is('read_at', null)
+          // reflect locally
+          setItems(prev => prev.map(i => ({ ...i, read_at: i.read_at ?? new Date().toISOString() })))
+        }
       } catch (e) {
         console.error(e)
       } finally {
