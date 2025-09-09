@@ -1,6 +1,7 @@
 "use client"
 export const runtime = 'edge'
 import { useEffect, useMemo, useState } from 'react'
+import { VideoAddForm, VideoPreview } from './VideoEmbed'
 import { useSearchParams } from 'next/navigation'
 const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
@@ -12,6 +13,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
   const openLog = qp?.get('log') === '1'
   const [climb, setClimb] = useState<Climb | null>(null)
   const [photos, setPhotos] = useState<Array<{ id: string, image_base64: string | null }>>([])
+  const [videos, setVideos] = useState<Array<{ id: string, url: string, user_id?: string | null }>>([])
   const [comments, setComments] = useState<any[]>([])
   const [sends, setSends] = useState<Array<{ user_id: string, user_name: string | null, date: string, attempt_type: 'flashed'|'sent', fa?: boolean }>>([])
   const [isAdmin, setIsAdmin] = useState(false)
@@ -34,6 +36,11 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
       }
       const { data: ph } = await supabase.from('climb_photos').select('id,image_base64').eq('climb_id', id).order('created_at', { ascending: false }).limit(12)
       setPhotos(ph || [])
+      // Videos are optional; ignore error if table not present
+      try {
+        const { data: vids } = await supabase.from('climb_videos').select('id,url,user_id').eq('climb_id', id).order('created_at', { ascending: false })
+        setVideos(vids || [])
+      } catch { setVideos([]) }
       const { data: cm } = await supabase.from('climb_comments').select('id, user_id, parent_id, body, is_setter, created_at, user:users(name,profile_photo)').eq('climb_id', id).order('created_at', { ascending: true })
       setComments(cm || [])
       // Load sends (flashed or sent) for this climb, earliest first
@@ -92,10 +99,61 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
         <h2 className="font-semibold mb-2">Photos</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {photos.map(p => (
-            <div key={p.id} className="aspect-video bg-white/5 rounded overflow-hidden">
+            <div key={p.id} className="relative aspect-video bg-white/5 rounded overflow-hidden">
               {p.image_base64 && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={`data:image/*;base64,${p.image_base64}`} alt="climb" className="h-full w-full object-cover" />
+              )}
+              {isAdmin && (
+                <button
+                  className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white rounded px-2 py-1 text-xs"
+                  onClick={async () => {
+                    if (!confirm('Delete this photo?')) return
+                    const supabase = await getSupabase()
+                    const { error } = await supabase.from('climb_photos').delete().eq('id', p.id)
+                    if (error) alert(error.message)
+                    else setPhotos(prev => prev.filter(x => x.id !== p.id))
+                  }}
+                >Delete</button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 className="font-semibold mb-2">Videos</h2>
+        <VideoAddForm
+          onAdd={async (url) => {
+            try {
+              const supabase = await getSupabase(); const { data: u } = await supabase.auth.getUser(); const uid = u.user?.id
+              if (!uid) { alert('Sign in'); return }
+              const { data, error } = await supabase.from('climb_videos').insert({ climb_id: id, url, user_id: uid }).select('id,url,user_id').single()
+              if (error) throw error
+              setVideos(prev => [data as any, ...prev])
+            } catch (e: any) {
+              alert(e?.message || 'Failed to add video link. Ensure table "climb_videos" exists with columns (id uuid pk, climb_id uuid, url text, user_id uuid, created_at timestamp default now()).')
+            }
+          }}
+        />
+        {videos.length === 0 && <div className="text-sm text-base-subtext">No videos yet.</div>}
+        <div className="mt-3 grid gap-3">
+          {videos.map(v => (
+            <div key={v.id} className="relative rounded-lg overflow-hidden border border-white/5">
+              <VideoPreview url={v.url} />
+              {(isAdmin) && (
+                <button
+                  className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white rounded px-2 py-1 text-xs"
+                  onClick={async () => {
+                    if (!confirm('Delete this video?')) return
+                    try {
+                      const supabase = await getSupabase()
+                      const { error } = await supabase.from('climb_videos').delete().eq('id', v.id)
+                      if (error) throw error
+                      setVideos(prev => prev.filter(x => x.id !== v.id))
+                    } catch (e: any) { alert(e?.message || 'Failed') }
+                  }}
+                >Delete</button>
               )}
             </div>
           ))}

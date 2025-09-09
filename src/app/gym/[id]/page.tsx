@@ -15,6 +15,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
   const [gym, setGym] = useState<Gym | null>(null)
   const [climbs, setClimbs] = useState<Climb[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
+  const [claimed, setClaimed] = useState<boolean>(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [claiming, setClaiming] = useState(false)
@@ -89,6 +90,11 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
         }
       }
       if (!aRes.error) setIsAdmin(Boolean(aRes.data))
+      // Determine if gym is already claimed by any admin
+      try {
+        const { data: admins } = await supabase.from('gym_admins').select('user_id').eq('gym_id', gid).limit(1)
+        setClaimed((admins || []).length > 0)
+      } catch { setClaimed(false) }
       if (!sRes.error) setSections(sRes.data || [])
       // Load recent activity and following (non-blocking)
       loadActivity().catch(() => {})
@@ -221,6 +227,18 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
     const b64 = data && (data[0] as any)?.image_base64
     const preview = b64 ? `data:image/*;base64,${b64}` : null
     setPreviews(prev => ({ ...prev, [climbId]: preview }))
+  async function deletePhoto(photoId: string, climbId: string) {
+    if (!isAdmin) return
+    if (!confirm('Delete this photo?')) return
+    const supabase = await getSupabase()
+    const { error } = await supabase.from('climb_photos').delete().eq('id', photoId)
+    if (error) { alert(error.message); return }
+    setPhotoCounts(pc => ({ ...pc, [climbId]: Math.max(0, (pc[climbId] || 1) - 1) }))
+    fetchPreview(climbId).catch(() => {})
+    if (lightbox && lightbox.climbId === climbId) {
+      setLightbox({ ...lightbox, photos: lightbox.photos.filter(p => p.id !== photoId) })
+    }
+  }
   }
 
   async function quickLog(climbId: string, defaults?: { attempts?: number, rating?: number, notes?: string, grade?: number }) {
@@ -255,7 +273,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
         <div className="card">
           <h1 className="text-xl font-bold">{gym.name}</h1>
           {gym.location && <div className="text-sm text-base-subtext">{gym.location}</div>}
-          {!isAdmin && (
+          {!isAdmin && !claimed && (
             <div className="mt-3">
               <button className="btn-primary" onClick={claimAdmin} disabled={claiming}> {claiming ? 'Claiming…' : 'Claim Admin (if unclaimed)'} </button>
             </div>
@@ -348,7 +366,12 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
               <div className="flex items-center gap-2">
                 <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: dot }} />
                 <Link href={`/climb/${c.id}`} className="font-semibold truncate hover:underline">{c.name}</Link>
-                {c.dyno ? <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-white/10">Dyno</span> : null}
+                {((c as any).active_status ?? true) ? (
+                  <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">Active</span>
+                ) : (
+                  <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">Removed</span>
+                )}
+                {c.dyno ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10">Dyno</span> : null}
               </div>
               <div className="mt-1 text-xs text-base-subtext">{c.type} • Grade {c.grade ?? '-'} {c.section?.name ? `• ${c.section.name}` : c.location ? `• ${c.location}` : ''}</div>
             </div>
@@ -394,7 +417,15 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
               ) : (
                 <div className="h-full w-full grid place-items-center text-base-subtext">No photos yet</div>
               )}
-              <button className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 rounded-md px-3 py-1" onClick={() => setLightbox(null)}>Close</button>
+              <div className="absolute top-2 right-2 flex gap-2">
+                {isAdmin && lightbox.photos.length > 0 && (
+                  <button className="bg-red-500/80 hover:bg-red-600 text-white rounded-md px-3 py-1"
+                    onClick={() => deletePhoto(lightbox.photos[lightbox.idx].id, lightbox.climbId)}>
+                    Delete
+                  </button>
+                )}
+                <button className="bg-white/10 hover:bg-white/20 rounded-md px-3 py-1" onClick={() => setLightbox(null)}>Close</button>
+              </div>
               {lightbox.photos.length > 1 && (
                 <>
                   <button className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 rounded-full h-9 w-9" onClick={() => setLightbox(lb => lb ? ({ ...lb, idx: (lb.idx - 1 + lb.photos.length) % lb.photos.length }) : lb)}>
@@ -748,3 +779,5 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
     </li>
   )
 }
+
+
