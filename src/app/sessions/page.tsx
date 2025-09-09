@@ -11,13 +11,13 @@ type Session = {
   notes: string | null
 }
 
-const ACTIVITIES: Array<{ key: Session['activity_type']; label: string; color: string }> = [
-  { key: 'Climb', label: 'Climb', color: 'text-sky-400' },
-  { key: 'Board', label: 'Board', color: 'text-amber-400' },
-  { key: 'Hang', label: 'Hang', color: 'text-violet-400' },
-  { key: 'Strength', label: 'Strength', color: 'text-red-400' },
-  { key: 'Cardio', label: 'Cardio', color: 'text-rose-500' },
-  { key: 'Yoga', label: 'Yoga', color: 'text-emerald-400' },
+const ACTIVITIES: Array<{ key: Session['activity_type']; label: string; color: string; bg: string }> = [
+  { key: 'Climb', label: 'Climb', color: 'text-sky-400', bg: 'bg-sky-500/20' },
+  { key: 'Board', label: 'Board', color: 'text-amber-400', bg: 'bg-amber-500/20' },
+  { key: 'Hang', label: 'Hang', color: 'text-violet-400', bg: 'bg-violet-500/20' },
+  { key: 'Strength', label: 'Strength', color: 'text-red-400', bg: 'bg-red-500/20' },
+  { key: 'Cardio', label: 'Cardio', color: 'text-rose-500', bg: 'bg-rose-500/20' },
+  { key: 'Yoga', label: 'Yoga', color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
 ]
 
 type NewType = 'Climb' | 'Board' | 'Hang' | 'Strength' | 'Cardio' | 'Yoga'
@@ -37,46 +37,44 @@ function normalize(type: Session['activity_type']): NewType {
   }
 }
 
-function Icon({ type }: { type: NewType }) {
-  const common = 'h-3.5 w-3.5'
-  switch (type) {
-    case 'Climb':
-      return (
-        <svg viewBox="0 0 24 24" className={`${common} text-sky-400`} fill="currentColor">
+function Icon({ type, size = 'md' }: { type: NewType, size?: 'sm' | 'md' | 'lg' }) {
+  const cfg = ACTIVITIES.find(a => a.key === type)!
+  const wrap = size === 'lg' ? 'h-8 w-8' : size === 'md' ? 'h-6 w-6' : 'h-5 w-5'
+  const inner = size === 'lg' ? 'h-5 w-5' : size === 'md' ? 'h-4 w-4' : 'h-3.5 w-3.5'
+  return (
+    <span className={`inline-flex items-center justify-center rounded-full ${cfg.bg} ${wrap}`}>
+      {type === 'Climb' && (
+        <svg viewBox="0 0 24 24" className={`${inner} ${cfg.color}`} fill="currentColor">
           <path d="M12 3L2 21h20L12 3z" />
         </svg>
-      )
-    case 'Board':
-      return (
-        <svg viewBox="0 0 24 24" className={`${common} text-amber-400`} fill="currentColor">
+      )}
+      {type === 'Board' && (
+        <svg viewBox="0 0 24 24" className={`${inner} ${cfg.color}`} fill="currentColor">
           <rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16M4 14h16M9 5v14M15 5v14" stroke="currentColor" strokeWidth="0.5" fill="none" />
         </svg>
-      )
-    case 'Hang':
-      return (
-        <svg viewBox="0 0 24 24" className={`${common} text-violet-400`} fill="currentColor">
+      )}
+      {type === 'Hang' && (
+        <svg viewBox="0 0 24 24" className={`${inner} ${cfg.color}`} fill="currentColor">
           <rect x="4" y="6" width="16" height="2"/><rect x="6" y="8" width="2" height="6"/><rect x="16" y="8" width="2" height="6"/>
         </svg>
-      )
-    case 'Strength':
-      return (
-        <svg viewBox="0 0 24 24" className={`${common} text-red-400`} fill="currentColor">
+      )}
+      {type === 'Strength' && (
+        <svg viewBox="0 0 24 24" className={`${inner} ${cfg.color}`} fill="currentColor">
           <rect x="4" y="10" width="3" height="4"/><rect x="17" y="10" width="3" height="4"/><rect x="8" y="11" width="8" height="2"/>
         </svg>
-      )
-    case 'Cardio':
-      return (
-        <svg viewBox="0 0 24 24" className={`${common} text-rose-500`} fill="currentColor">
+      )}
+      {type === 'Cardio' && (
+        <svg viewBox="0 0 24 24" className={`${inner} ${cfg.color}`} fill="currentColor">
           <path d="M12 21s-7-4.35-7-10a4 4 0 017-2.65A4 4 0 0119 11c0 5.65-7 10-7 10z" />
         </svg>
-      )
-    case 'Yoga':
-      return (
-        <svg viewBox="0 0 24 24" className={`${common} text-emerald-400`} fill="currentColor">
+      )}
+      {type === 'Yoga' && (
+        <svg viewBox="0 0 24 24" className={`${inner} ${cfg.color}`} fill="currentColor">
           <circle cx="12" cy="6" r="2"/><path d="M12 8c-2 3-6 3-6 6 0 2 2 3 6 3s6-1 6-3c0-3-4-3-6-6z" />
         </svg>
-      )
-  }
+      )}
+    </span>
+  )
 }
 
 export default function SessionsPage() {
@@ -177,12 +175,12 @@ export default function SessionsPage() {
     dayCells.push(
       <button key={`d-${d}`} className="p-2 h-16 border border-white/5 rounded text-left hover:bg-white/5" onClick={() => setDate(key)}>
         <div className="text-xs text-base-subtext">{d}</div>
-        <div className="mt-1 flex flex-wrap gap-1">
-          {list.slice(0,6).map((s, idx) => (
-            <Icon key={s.id + idx} type={normalize(s.activity_type)} />
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {list.slice(0,4).map((s, idx) => (
+            <Icon key={s.id + idx} type={normalize(s.activity_type)} size="md" />
           ))}
-          {list.length > 6 && (
-            <span className="text-[10px] text-base-subtext">+{list.length - 6}</span>
+          {list.length > 4 && (
+            <span className="text-[10px] text-base-subtext">+{list.length - 4}</span>
           )}
         </div>
       </button>
@@ -231,7 +229,7 @@ export default function SessionsPage() {
           <div className="mt-1 flex flex-wrap gap-3 items-center">
             {ACTIVITIES.map(a => (
               <div key={a.key} className="flex items-center gap-1">
-                <Icon type={a.key} />
+                <Icon type={a.key as any} size="md" />
                 <span className="text-xs">{a.label}</span>
               </div>
             ))}
@@ -246,7 +244,7 @@ export default function SessionsPage() {
           <div className="space-y-2">
             {items.map(s => (
               <div key={s.id} className="flex items-center gap-3 p-2 rounded hover:bg-white/5">
-                <Icon type={normalize(s.activity_type)} />
+                <Icon type={normalize(s.activity_type)} size="lg" />
                 {editingId === s.id ? (
                   <div className="flex-1 grid gap-2 sm:grid-cols-4">
                     <input type="date" className="input" value={(editDraft.date as string) || s.date.slice(0,10)} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} />
@@ -335,8 +333,8 @@ function Stats({ items }: { items: Session[] }) {
           const v = totals.get(k)!
           return (
             <div key={k} className="flex items-center gap-2">
-              <Icon type={k} />
-              <div className="text-sm"><span className="font-medium mr-2">{k}</span>{v.count}x • {v.minutes}m</div>
+              <Icon type={k as any} size="md" />
+              <div className="text-sm"><span className="font-medium mr-2">{k}</span>{v.count}x ? {v.minutes}m</div>
             </div>
           )
         })}
@@ -344,3 +342,8 @@ function Stats({ items }: { items: Session[] }) {
     </div>
   )
 }
+
+
+
+
+

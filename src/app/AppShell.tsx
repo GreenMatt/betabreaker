@@ -24,7 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link href="/log">Quick Log</Link>
                 <Link href="/feed">Feed</Link>
                 <Link href="/leaderboards">Leaders</Link>
-                <Link href="/challenges">Challenges</Link>
+                <Link href="/sessions">Training</Link>
                 <Link href="/settings">Settings</Link>
               </nav>
               <UserNav />
@@ -37,4 +37,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </AuthProvider>
   )
 }
+
 
