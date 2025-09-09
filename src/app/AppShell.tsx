@@ -4,10 +4,12 @@ import { AuthProvider } from '@/lib/authContext'
 import RouteGuard from '@/components/RouteGuard'
 import UserNav from '@/components/UserNav'
 import Logo from '@/components/Logo'
+import Stabilizer from '@/components/Stabilizer'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
+      <Stabilizer />
       <RouteGuard>
         <div className="max-w-screen-md mx-auto px-4 pb-24">
           <header className="sticky top-0 z-20 backdrop-blur bg-base-bg/70 border-b border-black/10">
