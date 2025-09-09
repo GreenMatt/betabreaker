@@ -14,7 +14,7 @@ This repo scaffolds a Progressive Web App for gym climbing: boulder, top rope, a
    - `supabase/schema.sql`
    - `supabase/storage_policies.sql` (after creating buckets below)
 3. Auth providers:
-   - Enable Google and Facebook in Authentication → Providers.
+   - Enable Google and Facebook in Authentication → Providers
    - Add authorized redirect URIs: `https://YOUR_DOMAIN` and `http://localhost:3000`.
 4. Storage buckets:
    - Create public buckets: `profile-photos`, `climb-photos`.
