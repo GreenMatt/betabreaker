@@ -1,5 +1,4 @@
 "use client"
-export const runtime = 'edge'
 import { useEffect, useMemo, useState } from 'react'
 import { VideoAddForm, VideoPreview, isSupportedVideoUrl } from './VideoEmbed'
 import { useSearchParams } from 'next/navigation'
