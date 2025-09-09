@@ -245,7 +245,7 @@ function SendLogModal({ climbId, onClose }: { climbId: string, onClose: () => vo
   async function save(e: React.FormEvent) {
     e.preventDefault(); setBusy(true)
     try {
-      const { data: u } = await supabase.auth.getUser(); const uid = u.user?.id
+      const supabase = await getSupabase(); const { data: u } = await supabase.auth.getUser(); const uid = u.user?.id
       if (!uid) throw new Error('Not signed in')
       const { error: e1 } = await supabase.from('climb_logs').insert({ user_id: uid, climb_id: climbId, attempt_type: attempt, attempts: attempt==='sent' ? attempts : null, personal_rating: rating, notes: notes || null })
       if (e1) throw e1
