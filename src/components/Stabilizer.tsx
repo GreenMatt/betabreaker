@@ -1,5 +1,6 @@
 "use client"
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { logClientError } from '@/lib/clientLog'
 
 function clearSupabaseLocal() {
   try {
@@ -33,6 +34,7 @@ async function unregisterSWIfDisabled() {
 }
 
 export default function Stabilizer() {
+  const loggedRef = useRef(0)
   useEffect(() => {
     unregisterSWIfDisabled().catch(() => {})
 
@@ -53,7 +55,15 @@ export default function Stabilizer() {
 
     // Global error burst recovery
     let errCount = 0
-    const onErr = () => {
+    const onErr = (evt?: any) => {
+      // lightweight client logging, sample first 3 errors per load
+      if (loggedRef.current < 3) {
+        loggedRef.current++
+        const err: any = evt?.error || evt?.reason || evt
+        const message = err?.message || String(err || 'window error')
+        const stack = err?.stack
+        logClientError({ message, stack }).catch(() => {})
+      }
       errCount++
       if (errCount >= 3 && sessionStorage.getItem('bb_recovered') !== '1') {
         clearSupabaseLocal()
@@ -73,4 +83,3 @@ export default function Stabilizer() {
 
   return null
 }
-
