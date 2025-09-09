@@ -123,7 +123,8 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
       <div className="card">
         <h2 className="font-semibold mb-2">Videos</h2>
         <VideoAddForm
-          onAdd={async (url) => {\n            if (!isSupportedVideoUrl(url)) { alert('Only YouTube and Instagram links are supported for now.'); return }
+          onAdd={async (url) => {
+            if (!isSupportedVideoUrl(url)) { alert('Only YouTube and Instagram links are supported for now.'); return }
             try {
               const supabase = await getSupabase(); const { data: u } = await supabase.auth.getUser(); const uid = u.user?.id
               if (!uid) { alert('Sign in'); return }
@@ -308,6 +309,7 @@ function StarRating({ value, onChange }: { value: 1|2|3|4|5, onChange: (v: 1|2|3
     </div>
   )
 }
+
 
 
 
