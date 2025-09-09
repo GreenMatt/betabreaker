@@ -104,22 +104,72 @@ try {
 
 console.log('[fix-cf-dist] Completed helper placement and verification.');
 
-// Patch generated function files to reference async_hooks.js explicitly if needed
+// Ensure per-route async_hooks shims next to each generated *.func.js
 try {
-  const idx = path.join(workerDir, '__next-on-pages-dist__', 'functions', 'index.func.js');
-  if (fs.existsSync(idx)) {
-    let srcCode = fs.readFileSync(idx, 'utf8');
-    const before = srcCode;
-    srcCode = srcCode.replace(/(__next-on-pages-dist__\/functions\/async_hooks)(["'])/g, '$1.js$2');
-    if (srcCode !== before) {
-      fs.writeFileSync(idx, srcCode, 'utf8');
-      console.log('[fix-cf-dist] Patched index.func.js to import async_hooks.js explicitly');
-    } else {
-      console.log('[fix-cf-dist] No import patch needed in index.func.js');
+  const functionsRoot = path.join(workerDir, '__next-on-pages-dist__', 'functions');
+  const shimContent = `// Generated shim: async_hooks polyfill for Cloudflare Pages\n` +
+`export class AsyncLocalStorage {\n` +
+`  constructor() { this._store = undefined }\n` +
+`  disable() { this._store = undefined }\n` +
+`  getStore() { return this._store }\n` +
+`  run(store, callback, ...args) { const prev = this._store; this._store = store; try { return callback(...args) } finally { this._store = prev } }\n` +
+`  exit(callback, ...args) { return callback(...args) }\n` +
+`  enterWith(store) { this._store = store }\n` +
+`}\n` +
+`export function executionAsyncId() { return 0 }\n` +
+`export function triggerAsyncId() { return 0 }\n` +
+`export function createHook() { return { enable() {}, disable() {} } }\n` +
+`export default { AsyncLocalStorage, executionAsyncId, triggerAsyncId, createHook }\n`;
+  let created = 0;
+  function walkAndShim(p) {
+    if (!fs.existsSync(p)) return;
+    const st = fs.statSync(p);
+    if (st.isDirectory()) {
+      const entries = fs.readdirSync(p);
+      const hasFunc = entries.some((e) => e.endsWith('.func.js') || e.endsWith('.func.mjs'));
+      if (hasFunc) {
+        const targetNoExt = path.join(p, 'async_hooks');
+        const targetJS = path.join(p, 'async_hooks.js');
+        const targetMJS = path.join(p, 'async_hooks.mjs');
+        if (!fs.existsSync(targetJS)) { fs.writeFileSync(targetJS, shimContent, 'utf8'); created++; }
+        if (!fs.existsSync(targetMJS)) { fs.writeFileSync(targetMJS, shimContent, 'utf8'); created++; }
+        if (!fs.existsSync(targetNoExt)) { fs.writeFileSync(targetNoExt, shimContent, 'utf8'); created++; }
+      }
+      for (const e of entries) walkAndShim(path.join(p, e));
+      return;
     }
-  } else {
-    console.log('[fix-cf-dist] index.func.js not found under worker helpers; skipping import patch');
   }
+  walkAndShim(functionsRoot);
+  console.log(`[fix-cf-dist] Route-level async_hooks shims created: ${created}`);
+} catch (e) {
+  console.warn('[fix-cf-dist] Failed to ensure per-route async_hooks shims:', e?.message || e);
+}
+
+// Patch ALL generated helper/function files to reference async_hooks.js explicitly if needed
+try {
+  const helperRoot = path.join(workerDir, '__next-on-pages-dist__');
+  const exts = new Set(['.js', '.mjs']);
+  let patched = 0;
+  function walk(p) {
+    if (!fs.existsSync(p)) return;
+    const st = fs.statSync(p);
+    if (st.isDirectory()) {
+      for (const e of fs.readdirSync(p)) walk(path.join(p, e));
+      return;
+    }
+    const ext = path.extname(p);
+    if (!exts.has(ext)) return;
+    let content = fs.readFileSync(p, 'utf8');
+    const before = content;
+    // Add .js to imports that omit extension, covering nested route paths too
+    content = content.replace(/(["'])(__next-on-pages-dist__\/functions\/(?:[\w/]+\/)?async_hooks)(\1)/g, '$1$2.js$3');
+    if (content !== before) {
+      fs.writeFileSync(p, content, 'utf8');
+      patched++;
+    }
+  }
+  walk(helperRoot);
+  console.log(`[fix-cf-dist] Import patching complete. Files updated: ${patched}`);
 } catch (e) {
   console.warn('[fix-cf-dist] Failed to patch imports:', e?.message || e);
 }

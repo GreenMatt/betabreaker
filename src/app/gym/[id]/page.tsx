@@ -1,5 +1,5 @@
 "use client"
-export const runtime = 'edge'
+// default runtime
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 // Lazy-load Supabase on the client to avoid Edge runtime pulling Node builtins
