@@ -121,6 +121,7 @@ try {
 `export function createHook() { return { enable() {}, disable() {} } }\n` +
 `export default { AsyncLocalStorage, executionAsyncId, triggerAsyncId, createHook }\n`;
   let created = 0;
+  const createdPaths = [];
   function walkAndShim(p) {
     if (!fs.existsSync(p)) return;
     const st = fs.statSync(p);
@@ -131,7 +132,9 @@ try {
         const targetNoExt = path.join(p, 'async_hooks');
         const targetJS = path.join(p, 'async_hooks.js');
         const targetMJS = path.join(p, 'async_hooks.mjs');
-        if (!fs.existsSync(targetJS)) { fs.writeFileSync(targetJS, shimContent, 'utf8'); created++; }
+        const relFromFunctions = path.relative(functionsRoot, targetJS).replace(/\\/g, '/');
+        if (!fs.existsSync(targetJS)) { fs.writeFileSync(targetJS, shimContent, 'utf8'); created++; createdPaths.push(relFromFunctions); }
+        else { createdPaths.push(relFromFunctions); }
         if (!fs.existsSync(targetMJS)) { fs.writeFileSync(targetMJS, shimContent, 'utf8'); created++; }
         if (!fs.existsSync(targetNoExt)) { fs.writeFileSync(targetNoExt, shimContent, 'utf8'); created++; }
       }
@@ -141,6 +144,31 @@ try {
   }
   walkAndShim(functionsRoot);
   console.log(`[fix-cf-dist] Route-level async_hooks shims created: ${created}`);
+  // Force Wrangler to attach these modules by importing them from index.js
+  try {
+    const indexPath = path.join(workerDir, 'index.js');
+    if (fs.existsSync(indexPath)) {
+      let idx = fs.readFileSync(indexPath, 'utf8');
+      let injected = 0;
+      for (const rel of createdPaths) {
+        const spec = `__next-on-pages-dist__/functions/${rel}`;
+        if (!idx.includes(spec)) {
+          idx += `\nimport '${spec}'; // ensure attached`;
+          injected++;
+        }
+      }
+      if (injected > 0) {
+        fs.writeFileSync(indexPath, idx, 'utf8');
+        console.log(`[fix-cf-dist] Injected ${injected} async_hooks imports into _worker.js/index.js`);
+      } else {
+        console.log('[fix-cf-dist] No new imports injected into _worker.js/index.js');
+      }
+    } else {
+      console.warn('[fix-cf-dist] _worker.js/index.js not found for import injection');
+    }
+  } catch (e) {
+    console.warn('[fix-cf-dist] Failed to inject imports into index.js:', e?.message || e);
+  }
 } catch (e) {
   console.warn('[fix-cf-dist] Failed to ensure per-route async_hooks shims:', e?.message || e);
 }
