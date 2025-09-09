@@ -47,8 +47,10 @@ export default function Page() {
 
   function resolveIconUrl(icon: string | null): string {
     if (!icon) return '/icons/betabreaker_header.png'
-    if (icon.startsWith('http://') || icon.startsWith('https://') || icon.startsWith('/')) return icon
-    return `/icons/${icon}`
+    if (icon.startsWith('http://') || icon.startsWith('https://')) return icon
+    if (icon.startsWith('/')) return icon
+    const normalized = icon.replace(/^\/?icons\//, '')
+    return `/icons/${normalized}`
   }
 
   async function loadAllBadges() {
