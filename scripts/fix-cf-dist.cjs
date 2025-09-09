@@ -78,6 +78,7 @@ for (const dest of desiredTargets) {
 try {
   const functionsDir = path.join(workerDir, '__next-on-pages-dist__', 'functions');
   ensureDir(functionsDir);
+  const targetNoExt = path.join(functionsDir, 'async_hooks');
   const targetJS = path.join(functionsDir, 'async_hooks.js');
   const targetMJS = path.join(functionsDir, 'async_hooks.mjs');
   const shim = `// Generated shim: async_hooks polyfill for Cloudflare Pages\n` +
@@ -93,6 +94,7 @@ try {
 `export function triggerAsyncId() { return 0 }\n` +
 `export function createHook() { return { enable() {}, disable() {} } }\n` +
 `export default { AsyncLocalStorage, executionAsyncId, triggerAsyncId, createHook }\n`;
+  fs.writeFileSync(targetNoExt, shim, 'utf8');
   fs.writeFileSync(targetJS, shim, 'utf8');
   fs.writeFileSync(targetMJS, shim, 'utf8');
   console.log('[fix-cf-dist] Wrote async_hooks shim under _worker.js helpers');
