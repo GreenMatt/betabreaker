@@ -88,7 +88,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
   return (
     <div className="space-y-4">
       <div className="card">
-        <h1 className="text-xl font-bold">{climb?.name || 'Climb'} {climb?.color ? (<><span>{'\u2022'}</span> {climb.color}</>) : ''}</h1>
+        <h1 className="text-xl font-bold">{climb?.name || 'Climb'} {climb?.color ? (<span className="inline">{'\u2022'} {climb.color}</span>) : ''}</h1>
         <div className="text-sm text-base-subtext">{climb?.type} <span>{'\u2022'}</span> Grade {climb?.grade ?? '-'} <span>{'\u2022'}</span> {climb?.gym?.name}</div>
         <div className="mt-3">
           <button className="btn-primary" onClick={() => setShowLog(true)}>Log this climb</button>
@@ -290,7 +290,7 @@ function SendLogModal({ climbId, onClose }: { climbId: string, onClose: () => vo
           </div>
           <textarea className="input" placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} />
           <div className="flex items-center justify-end gap-2">
-            <button className="btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+            <button className="btn-primary" disabled={busy}>{busy ? 'Savingâ€¦' : 'Save'}</button>
           </div>
         </form>
       </div>
@@ -303,12 +303,13 @@ function StarRating({ value, onChange }: { value: 1|2|3|4|5, onChange: (v: 1|2|3
     <div className="flex">
       {[1,2,3,4,5].map((n) => (
         <button key={n} type="button" onClick={() => onChange(n as any)} className="px-1">
-          <span className={n <= value ? 'text-yellow-400' : 'text-base-subtext'}>★</span>
+          <span className={n <= value ? 'text-yellow-400' : 'text-base-subtext'}>â˜…</span>
         </button>
       ))}
     </div>
   )
 }
+
 
 
 
