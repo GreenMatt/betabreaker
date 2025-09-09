@@ -92,7 +92,7 @@ export default function NotificationsPage() {
                   </div>
                   <div className="text-xs text-base-subtext">{new Date(n.created_at).toLocaleString()}</div>
                 </div>
-                <Link href="/log" className="text-sm text-primary">View</Link>
+                <Link href="/feed" className="text-sm text-primary">View</Link>
               </div>
             ))}
           </div>
@@ -101,4 +101,3 @@ export default function NotificationsPage() {
     </div>
   )
 }
-
