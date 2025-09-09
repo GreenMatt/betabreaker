@@ -484,6 +484,7 @@ function SectionManager({ gymId, sections, onAdded, onRenamed, onDeleted }: { gy
     e.preventDefault()
     if (!name.trim()) return
     setBusy(true)
+    const supabase = await getSupabase()
     const { data, error } = await supabase.from('gym_sections').insert({ gym_id: gymId, name: name.trim() }).select('id,name').single()
     setBusy(false)
     if (error) { alert(error.message); return }
