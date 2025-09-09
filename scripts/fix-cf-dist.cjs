@@ -27,7 +27,10 @@ const candidates = [
   path.join(outRoot, 'static', '__next-on-pages-dist__'),
 ];
 
-const dest = path.join(outRoot, 'static', '__next-on-pages-dist__');
+const desiredTargets = [
+  path.join(outRoot, 'functions', '__next-on-pages-dist__'),
+  path.join(outRoot, 'static', '__next-on-pages-dist__'),
+];
 
 let src = null;
 for (const c of candidates) {
@@ -39,12 +42,12 @@ if (!src) {
   process.exit(0);
 }
 
-if (path.resolve(src) === path.resolve(dest)) {
-  console.log('[fix-cf-dist] Helper folder already under static.');
-  process.exit(0);
+for (const dest of desiredTargets) {
+  if (path.resolve(src) === path.resolve(dest)) {
+    console.log(`[fix-cf-dist] Helper already present at ${dest}`);
+    continue;
+  }
+  console.log(`[fix-cf-dist] Ensuring helper at ${dest} (from ${src})`);
+  copyRecursive(src, dest);
 }
-
-console.log(`[fix-cf-dist] Copying from ${src} -> ${dest}`);
-copyRecursive(src, dest);
-console.log('[fix-cf-dist] Done.');
-
+console.log('[fix-cf-dist] Completed helper placement for functions and static.');
