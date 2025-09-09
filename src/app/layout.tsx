@@ -6,6 +6,10 @@ import { PWARegister } from '@/components/PWARegister'
 // @ts-expect-error Server Component including Client child
 import AppShell from './AppShell'
 
+// Force the whole app to run on the Edge runtime (Cloudflare-compatible)
+export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'BetaBreaker — Climbing Community PWA',
   description: 'Log climbs, train smarter, and compete with friends.',
