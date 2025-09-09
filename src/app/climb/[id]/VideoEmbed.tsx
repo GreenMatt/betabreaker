@@ -34,7 +34,7 @@ export function VideoPreview({ url }: { url: string }) {
   )
 }
 
-function matchYouTube(url: string): string | null {
+export function matchYouTube(url: string): string | null {
   try {
     const u = new URL(url)
     if (u.hostname.includes('youtube.com')) {
@@ -47,7 +47,10 @@ function matchYouTube(url: string): string | null {
   return null
 }
 
-function isInstagram(url: string): boolean {
+export function isInstagram(url: string): boolean {
   try { return new URL(url).hostname.includes('instagram.com') } catch { return false }
 }
 
+export function isSupportedVideoUrl(url: string): boolean {
+  return !!matchYouTube(url) || isInstagram(url)
+}

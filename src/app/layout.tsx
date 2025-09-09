@@ -13,7 +13,7 @@ import AppShell from './AppShell'
 export const metadata: Metadata = {
   title: 'BetaBreaker — Climbing Community PWA',
   description: 'Log climbs, train smarter, and compete with friends.',
-  manifest: '/manifest.webmanifest'
+  manifest: '/manifest.webmanifest',\n  icons: {\n    icon: '/icons/favicon.ico'\n  }
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -32,4 +32,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   )
 }
+
 

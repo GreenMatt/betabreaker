@@ -199,11 +199,15 @@ async function toggleBump(logId: string, current: boolean, comment?: string) {
     const { error } = await supabase.from('bumps').insert({ log_id: logId, user_id: uid, comment: comment || null })
     if (error) throw error
     return true
-  } else {
-    const { error } = await supabase.from('bumps').delete().eq('log_id', logId).eq('user_id', uid)
-    if (error) throw error
-    return false
   }
+  if (comment && comment.trim()) {
+    const { error } = await supabase.from('bumps').upsert({ log_id: logId, user_id: uid, comment }, { onConflict: 'log_id,user_id' })
+    if (error) throw error
+    return true
+  }
+  const { error } = await supabase.from('bumps').delete().eq('log_id', logId).eq('user_id', uid)
+  if (error) throw error
+  return false
 }
 
 function OwnLogRow({ item, bumpCount, bumped, comments, commentCount, onBumpChange, onChanged }: { item: OwnItem, bumpCount: number, bumped: boolean, comments: Array<{ user_name: string | null, profile_photo: string | null, comment: string, created_at: string }>, commentCount: number, onBumpChange: (bumped: boolean, delta: number) => void, onChanged: (i: OwnItem) => void }) {
@@ -399,7 +403,7 @@ function FollowRow({ item, onLocalUpdate, comments, commentCount }: { item: Foll
   return (
     <div className="card">
       <div className="text-sm text-base-subtext">{new Date(item.created_at).toLocaleString()}</div>
-      <div className="font-semibold">{item.user_name || 'Climber'} logged {item.attempt_type} on {item.climb_name}</div>
+      <div className="font-semibold">{item.user_name || 'Climber'} {item.attempt_type} {item.climb_name}</div>
       <div className="text-xs text-base-subtext">{item.type} • Grade {item.grade ?? '-'} • {item.gym_name}</div>
       {item.notes && <div className="mt-1 text-sm">{item.notes}</div>}
       {localComments.length > 0 && (
@@ -448,3 +452,5 @@ function FollowRow({ item, onLocalUpdate, comments, commentCount }: { item: Foll
     </div>
   )
 }
+
+

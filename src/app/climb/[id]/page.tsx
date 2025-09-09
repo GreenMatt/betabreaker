@@ -1,7 +1,7 @@
 "use client"
 export const runtime = 'edge'
 import { useEffect, useMemo, useState } from 'react'
-import { VideoAddForm, VideoPreview } from './VideoEmbed'
+import { VideoAddForm, VideoPreview, isSupportedVideoUrl } from './VideoEmbed'
 import { useSearchParams } from 'next/navigation'
 const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
@@ -124,7 +124,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
       <div className="card">
         <h2 className="font-semibold mb-2">Videos</h2>
         <VideoAddForm
-          onAdd={async (url) => {
+          onAdd={async (url) => {\n            if (!isSupportedVideoUrl(url)) { alert('Only YouTube and Instagram links are supported for now.'); return }
             try {
               const supabase = await getSupabase(); const { data: u } = await supabase.auth.getUser(); const uid = u.user?.id
               if (!uid) { alert('Sign in'); return }
@@ -309,3 +309,4 @@ function StarRating({ value, onChange }: { value: 1|2|3|4|5, onChange: (v: 1|2|3
     </div>
   )
 }
+

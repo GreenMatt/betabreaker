@@ -7,16 +7,17 @@ export default function UserNav() {
 
   if (!user) {
     return (
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2">
         <Link href="/login" className="btn-primary">Login</Link>
       </div>
     )
   }
 
   return (
-    <div className="ml-auto flex items-center gap-3">
+    <div className="ml-auto flex items-center gap-2">
       <Link href="/profile/me" className="text-sm text-base-subtext">Profile</Link>
       <button className="btn-primary" onClick={signOut}>Sign out</button>
     </div>
   )
 }
+

@@ -335,7 +335,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
             const colorMap: Record<string, string> = { black:'#000000', yellow:'#FFD60A', pink:'#FF6EA0', teal:'#14B8A6', blue:'#3B82F6', purple:'#8B5CF6', red:'#EF4444', green:'#22C55E' }
             const dot = c.color ? (colorMap[c.color] || '#8A2BE2') : '#8A2BE2'
             return (
-              <div key={c.id} className="group relative rounded-xl overflow-hidden border border-white/5 bg-base-panel shadow min-h-[320px]">
+              <div key={c.id} className="group relative rounded-xl overflow-hidden border border-white/5 bg-base-panel shadow min-h-[272px]">
                 <button className="block w-full" onClick={async () => {
                   // Load full gallery for this climb
                   const supabase = await getSupabase()
@@ -722,7 +722,7 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
   }
 
   return (
-    <li className="py-3">
+    <div className="card">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm text-base-subtext">{new Date(item.created_at).toLocaleString()}</div>
@@ -776,8 +776,11 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
           </>
         )}
       </div>
-    </li>
+    </div>
   )
 }
+
+
+
 
 

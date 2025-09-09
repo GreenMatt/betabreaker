@@ -11,11 +11,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <RouteGuard>
         <div className="max-w-screen-md mx-auto px-4 pb-24">
           <header className="sticky top-0 z-20 backdrop-blur bg-base-bg/70 border-b border-black/10">
-            <div className="flex items-center gap-3 py-3">
+            <div className="flex items-center gap-3 py-3 flex-wrap justify-between">
               <Link href="/" className="flex items-center gap-2">
                 <Logo size="md" />
               </Link>
-              <nav className="flex gap-3 text-sm text-base-subtext">
+              <nav className=\"hidden md:flex gap-3 text-sm text-base-subtext\">
                 <Link href="/gym">Gym</Link>
                 <Link href="/log">Quick Log</Link>
                 <Link href="/feed">Feed</Link>
@@ -32,3 +32,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </AuthProvider>
   )
 }
+
