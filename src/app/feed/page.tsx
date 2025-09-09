@@ -219,7 +219,6 @@ function OwnLogRow({ item, bumpCount, bumped, comments, commentCount, onBumpChan
   const [localComments, setLocalComments] = useState(comments)
   const [localCommentCount, setLocalCommentCount] = useState(commentCount)
   const [openComments, setOpenComments] = useState(false)
-  const [openComments, setOpenComments] = useState(false)
   useEffect(() => { setLocalBumped(bumped) }, [bumped])
   useEffect(() => { setLocalCount(bumpCount) }, [bumpCount])
   useEffect(() => { setLocalComments(comments) }, [comments])
