@@ -3,7 +3,8 @@ import { useEffect } from 'react'
 
 export function PWARegister() {
   useEffect(() => {
-    const enabled = process.env.NEXT_PUBLIC_ENABLE_SW === '1' || process.env.NODE_ENV === 'production'
+    // Opt-in only: enable the SW when NEXT_PUBLIC_ENABLE_SW=1
+    const enabled = process.env.NEXT_PUBLIC_ENABLE_SW === '1'
     if (!enabled) return
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
