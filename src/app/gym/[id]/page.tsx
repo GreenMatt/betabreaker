@@ -216,8 +216,8 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
     }
     input.click()
   }
-
   async function fetchPreview(climbId: string) {
+    const supabase = await getSupabase()
     const { data } = await supabase
       .from('climb_photos')
       .select('image_base64, created_at')
@@ -779,6 +779,7 @@ function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void
     </div>
   )
 }
+
 
 
 
