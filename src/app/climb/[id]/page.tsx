@@ -49,13 +49,37 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
         .eq('climb_id', id)
         .in('attempt_type', ['flashed','sent'])
         .order('date', { ascending: true })
-      const mapped = (sl || []).map((r: any) => ({
+      let mapped = (sl || []).map((r: any) => ({
         user_id: r.user_id as string,
         user_name: r.user?.name || null,
         date: r.date as string,
         attempt_type: r.attempt_type as 'flashed' | 'sent',
         fa: false
       }))
+      // Fallback: if RLS limits visibility, augment via gym activity RPC
+      try {
+        const gid = (c as any)?.gym?.id as string | undefined
+        if (gid) {
+          const { data: act } = await supabase.rpc('get_gym_activity', { gid, page_size: 200, page: 0 })
+          const extras = (act as any[] | null | undefined)?.filter((row: any) => {
+            const isSend = row?.attempt_type === 'flashed' || row?.attempt_type === 'sent'
+            const matchById = row?.climb_id ? String(row.climb_id) === String(id) : false
+            const matchByName = !matchById && row?.climb_name && (row.climb_name === (c as any)?.name)
+            return isSend && (matchById || matchByName)
+          }).map((row: any) => ({
+            user_id: String(row.user_id || ''),
+            user_name: row.user_name || null,
+            date: String(row.created_at || row.date || new Date().toISOString()),
+            attempt_type: (row.attempt_type === 'flashed' ? 'flashed' : 'sent') as 'flashed' | 'sent',
+            fa: false
+          })) || []
+          // Merge unique by user_id+date
+          const key = (x: any) => `${x.user_id}|${x.date}`
+          const map: Record<string, any> = {}
+          for (const r of [...mapped, ...extras]) map[key(r)] = r
+          mapped = Object.values(map).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        }
+      } catch { /* noop if RPC not available */ }
       if (mapped.length) mapped[0].fa = true
       setSends(mapped)
     })()
