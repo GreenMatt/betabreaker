@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:cf": "npx @cloudflare/next-on-pages@1.12.1 && node scripts/fix-cf-dist.cjs",
+    "build:cf": "npx @cloudflare/next-on-pages@1.11.2 && node scripts/fix-cf-dist.cjs",
     "build:cf:vercel": "npx vercel@47.0.5 build && node scripts/fix-cf-dist.cjs",
     "start": "next start",
     "lint": "eslint ."
