@@ -7,8 +7,6 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: '**' }
     ],
-    // Avoid Node/sharp-based optimization in edge runtime
-    unoptimized: true,
   },
   // Build hardening for Cloudflare: do not fail the build on type or lint issues.
   // This ensures Pages deployments complete while we stabilize types.
