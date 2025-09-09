@@ -191,6 +191,8 @@ try {
     const before = content;
     // Add .js to imports that omit extension, covering nested route paths too
     content = content.replace(/(["'])(__next-on-pages-dist__\/functions\/(?:[\w/]+\/)?async_hooks)(\1)/g, '$1$2.js$3');
+    // Also collapse nested async_hooks to root helper path
+    content = content.replace(/(["'])(__next-on-pages-dist__\/functions)\/[\w/]+\/(async_hooks\.js)(\1)/g, '$1$2/$3$4');
     if (content !== before) {
       fs.writeFileSync(p, content, 'utf8');
       patched++;
