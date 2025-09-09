@@ -388,11 +388,11 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
         <h2 className="font-semibold mb-2">Recent Activity</h2>
         {activityLoading && <div className="text-base-subtext">Loading…</div>}
         {!activityLoading && activity.length === 0 && <div className="text-base-subtext">No activity yet.</div>}
-        <ul className="divide-y divide-black/10">
+        <div className="grid gap-2">
           {activity.map((a) => (
             <GymActivityItem key={a.id} item={a} onChanged={() => loadActivity()} />
           ))}
-        </ul>
+        </div>
       </div>
 
       {followingUsers.length > 0 && (
