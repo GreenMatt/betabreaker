@@ -30,6 +30,9 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
   const [activityHasMore, setActivityHasMore] = useState(true)
   const [followingUsers, setFollowingUsers] = useState<Array<{ id: string, name: string | null, profile_photo: string | null }>>([])
   const [viewTab, setViewTab] = useState<'active'|'removed'>('active')
+  const [climbsPage, setClimbsPage] = useState(0)
+  const [climbsLoading, setClimbsLoading] = useState(false)
+  const [climbsHasMore, setClimbsHasMore] = useState(true)
 
   useEffect(() => {
     let mounted = true
@@ -39,7 +42,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       setError(null)
       const [gRes, cRes, aRes, sRes] = await Promise.all([
         supabase.from('gyms').select('id,name,location').eq('id', gid).maybeSingle(),
-        supabase.from('climbs').select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)').eq('gym_id', gid).order('created_at', { ascending: false }).limit(30),
+        supabase.from('climbs').select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)').eq('gym_id', gid).order('created_at', { ascending: false }).limit(12),
         supabase.rpc('is_gym_admin', { gid }),
         supabase.from('gym_sections').select('id,name').eq('gym_id', gid).order('name', { ascending: true })
       ])
@@ -82,9 +85,9 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
           if (mounted) {
             setPhotoCounts(counts)
             setPreviews(previewMap)
-            // Warm up previews for top few climbs
-            const topIds = list.slice(0, 6).map((x: any) => x.id)
-            topIds.forEach((cid: string) => { if (previewMap[cid] === undefined) fetchPreview(cid) })
+            // Warm up previews for all visible climbs
+            const allIds = list.map((x: any) => x.id)
+            allIds.forEach((cid: string) => { if (previewMap[cid] === undefined) fetchPreview(cid) })
           }
         } else {
           setPhotoCounts({})
@@ -101,6 +104,8 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       // Load recent activity and following (non-blocking)
       loadActivity().catch(() => {})
       loadFollowing().catch(() => {})
+      setClimbsPage(0)
+      setClimbsHasMore(list.length === 12)
       setLoading(false)
     })()
     return () => { mounted = false }
@@ -119,6 +124,61 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       setActivityHasMore(rows.length === pageSize)
     }
     setActivityLoading(false)
+  }
+
+  async function loadMoreClimbs() {
+    setClimbsLoading(true)
+    const supabase = await getSupabase()
+    const pageSize = 12
+    const offset = (climbsPage + 1) * pageSize
+    const { data: newClimbs, error } = await supabase
+      .from('climbs')
+      .select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)')
+      .eq('gym_id', gid)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+    
+    if (!error && newClimbs) {
+      const normalized: Climb[] = newClimbs.map((x: any) => ({
+        id: x.id,
+        name: x.name,
+        grade: x.grade,
+        type: x.type,
+        location: x.location,
+        setter: x.setter,
+        color: x.color,
+        dyno: x.dyno,
+        section_id: x.section_id,
+        section: Array.isArray(x.section)
+          ? (x.section[0] ? { name: String(x.section[0]?.name ?? '') } : null)
+          : (x.section ? { name: String(x.section?.name ?? '') } : null)
+      }))
+      
+      setClimbs(prev => [...prev, ...normalized])
+      setClimbsPage(prev => prev + 1)
+      setClimbsHasMore(normalized.length === pageSize)
+      
+      // Load previews for new climbs
+      const newIds = normalized.map(x => x.id)
+      if (newIds.length) {
+        const { data: photos } = await supabase
+          .from('climb_photos')
+          .select('id, climb_id, created_at')
+          .in('climb_id', newIds)
+          .order('created_at', { ascending: false })
+        
+        const newCounts: Record<string, number> = {}
+        for (const p of photos || []) {
+          const cid = (p as any).climb_id as string
+          newCounts[cid] = (newCounts[cid] || 0) + 1
+        }
+        setPhotoCounts(prev => ({ ...prev, ...newCounts }))
+        
+        // Load previews for new climbs
+        newIds.forEach(cid => fetchPreview(cid))
+      }
+    }
+    setClimbsLoading(false)
   }
 
   async function loadFollowing() {
@@ -159,7 +219,8 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       return
     }
     setForm({ name: '', type: 'boulder', grade: 5, location: '', setter: '', color: 'blue', dyno: false, section_id: '', active_status: true })
-    const { data } = await supabase.from('climbs').select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)').eq('gym_id', gid).order('created_at', { ascending: false })
+    // Reload first page of climbs
+    const { data } = await supabase.from('climbs').select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)').eq('gym_id', gid).order('created_at', { ascending: false }).limit(12)
     const normalized: Climb[] = ((data || []) as any[]).map((x: any) => ({
       id: x.id,
       name: x.name,
@@ -176,6 +237,8 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
         : (x.section ? { name: String(x.section?.name ?? '') } : null)
     }))
     setClimbs(normalized)
+    setClimbsPage(0)
+    setClimbsHasMore(normalized.length === 12)
   }
 
   async function claimAdmin() {
@@ -392,6 +455,17 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
             </div>
           )
         })}
+        {climbsHasMore && (
+          <div className="flex justify-center mt-6">
+            <button 
+              className="bg-white/10 hover:bg-white/20 rounded-md px-6 py-3 text-sm" 
+              disabled={climbsLoading} 
+              onClick={loadMoreClimbs}
+            >
+              {climbsLoading ? 'Loading more climbs…' : 'Load more climbs'}
+            </button>
+          </div>
+        )}
       </div>
       <div className="card mt-4">
         <h2 className="font-semibold mb-2">Recent Activity</h2>
