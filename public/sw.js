@@ -1,4 +1,4 @@
-const CACHE_NAME = 'betabreaker-v3'
+const CACHE_NAME = 'betabreaker-v4'
 const OFFLINE_URLS = [
   '/manifest.webmanifest'
 ]
@@ -13,6 +13,7 @@ function fetchWithTimeout(request, timeout = 8000) {
 }
 
 self.addEventListener('install', (event) => {
+  console.log('[SW] Installing service worker v4')
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_URLS))
   )
@@ -20,8 +21,12 @@ self.addEventListener('install', (event) => {
 })
 
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating service worker v4')
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.map((k) => k !== CACHE_NAME ? caches.delete(k) : undefined)))
+    caches.keys().then((keys) => {
+      console.log('[SW] Cleaning old caches:', keys.filter(k => k !== CACHE_NAME))
+      return Promise.all(keys.map((k) => k !== CACHE_NAME ? caches.delete(k) : undefined))
+    })
   )
   self.clients.claim()
 })
@@ -71,8 +76,17 @@ self.addEventListener('fetch', (event) => {
 
 // Handle message port errors
 self.addEventListener('message', (event) => {
+  console.log('[SW] Received message:', event.data)
   // Simple message acknowledgment to prevent port errors
   if (event.ports && event.ports[0]) {
-    event.ports[0].postMessage({ success: true })
+    try {
+      event.ports[0].postMessage({ success: true, version: 'v4' })
+    } catch (e) {
+      console.log('[SW] Port message failed:', e)
+    }
+  }
+  // Handle skip waiting messages
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting()
   }
 })
