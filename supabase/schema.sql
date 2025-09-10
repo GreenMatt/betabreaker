@@ -183,7 +183,7 @@ do $$ begin
     create policy "admins readable" on public.gym_admins for select using (true);
   end if;
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='gym_admins' and policyname='only admins can modify admin list') then
-    create policy "only admins can modify admin list" on public.gym_admins for all using (public.is_gym_admin(gym_id) OR NOT EXISTS (SELECT 1 FROM public.gym_admins existing WHERE existing.gym_id = gym_admins.gym_id));
+    create policy "only admins can modify admin list" on public.gym_admins for all using (EXISTS (SELECT 1 FROM public.gym_admins existing WHERE existing.gym_id = gym_admins.gym_id AND existing.user_id = auth.uid()) OR NOT EXISTS (SELECT 1 FROM public.gym_admins existing WHERE existing.gym_id = gym_admins.gym_id));
   end if;
 end $$;
 
