@@ -36,15 +36,46 @@ async function unregisterSWIfDisabled() {
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations().catch(() => [])
       if (!enabled || slowConnection) {
+        console.log('[Stabilizer] Clearing service workers:', regs.length)
         await Promise.all(regs.map(r => r.unregister().catch(() => {})))
         // Best-effort clear related caches
         if (typeof caches !== 'undefined') {
           const names = await caches.keys()
+          console.log('[Stabilizer] Clearing caches:', names.filter(n => /betabreaker|^next|^workbox/i.test(n)))
           await Promise.all(names.map(n => (/betabreaker|^next|^workbox/i.test(n) ? caches.delete(n) : Promise.resolve(false))))
+        }
+      } else if (enabled) {
+        // Force update existing service worker to new version
+        if (regs.length > 0) {
+          console.log('[Stabilizer] SW enabled, checking for updates')
+          regs.forEach(reg => {
+            if (reg.waiting) {
+              console.log('[Stabilizer] SW update waiting, forcing activation')
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+            }
+            reg.update().catch(() => {})
+          })
         }
       }
     }
   } catch {}
+}
+
+// Expose manual SW clearing function to global scope for debugging
+if (typeof window !== 'undefined') {
+  (window as any).clearServiceWorkers = async () => {
+    console.log('[Debug] Manually clearing all service workers')
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map(r => r.unregister()))
+      if (typeof caches !== 'undefined') {
+        const names = await caches.keys()
+        await Promise.all(names.map(n => caches.delete(n)))
+      }
+      console.log('[Debug] All service workers and caches cleared')
+      window.location.reload()
+    }
+  }
 }
 
 export default function Stabilizer() {
