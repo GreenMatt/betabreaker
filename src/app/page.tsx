@@ -24,13 +24,17 @@ export default function Page() {
   }, [router])
 
   async function loadStats() {
+    console.log('Loading stats...')
     const rpc = await supabase.rpc('get_user_stats')
+    console.log('Stats RPC result:', rpc)
     if (!rpc.error && rpc.data) {
       const row = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data
       if (row) {
         setStats({ climbs: row.climb_count ?? 0, highest: row.highest_grade ?? 0, badges: row.badge_count ?? 0, fas: row.fa_count ?? 0 })
         return
       }
+    } else if (rpc.error) {
+      console.error('Stats loading error:', rpc.error)
     }
     // Fallback if RPC not installed yet
     const { data: u } = await supabase.auth.getUser()
@@ -54,8 +58,11 @@ export default function Page() {
   }
 
   async function loadAllBadges() {
+    console.log('Loading badges...')
     const { data, error } = await supabase.from('badges').select('id,name,icon,description').order('name')
+    console.log('Badges result:', { data, error })
     if (!error) setAllBadges(data || [])
+    else console.error('Badges loading error:', error)
   }
 
   return (

@@ -253,9 +253,9 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
   const displayData = getDisplayData()
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/80 to-gray-800/60 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:border-white/20">
+    <div className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-lg hover:shadow-xl transition-all duration-300 hover:border-purple-400/50">
       {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
       <div className="relative p-5">
         {/* Header */}
@@ -266,10 +266,10 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
               <img 
                 src={displayData.userPhoto} 
                 alt="Profile" 
-                className="w-10 h-10 rounded-full object-cover border-2 border-white/10 ring-2 ring-transparent group-hover:ring-white/20 transition-all duration-300"
+                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 ring-2 ring-transparent group-hover:ring-purple-400/30 transition-all duration-300"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border-2 border-white/10 ring-2 ring-transparent group-hover:ring-white/20 transition-all duration-300">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border-2 border-black/10 ring-2 ring-transparent group-hover:ring-purple-400/30 transition-all duration-300">
                 <span className="text-white text-sm font-semibold">
                   {displayData.userName[0]?.toUpperCase() || 'U'}
                 </span>
@@ -277,17 +277,17 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
             )}
             
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-gray-400 mb-1">
+              <div className="text-xs text-gray-500 mb-1">
                 {new Date(activity.created_at).toLocaleString()}
               </div>
-              <div className="font-semibold text-white mb-1">
+              <div className="font-semibold text-gray-900 mb-1">
                 {displayData.userName} {activity.attempt_type} {displayData.climbName}
               </div>
-              <div className="text-xs text-gray-300 flex items-center gap-1">
+              <div className="text-xs text-gray-600 flex items-center gap-1">
                 <span>{displayData.type}</span>
-                <span className="w-1 h-1 rounded-full bg-gray-500" />
+                <span className="w-1 h-1 rounded-full bg-gray-400" />
                 <span>Grade {displayData.grade ?? '-'}</span>
-                <span className="w-1 h-1 rounded-full bg-gray-500" />
+                <span className="w-1 h-1 rounded-full bg-gray-400" />
                 <span>{displayData.gymName}</span>
               </div>
             </div>
@@ -296,7 +296,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
           <div className="flex items-center gap-2 ml-3">
             {displayData.showEdit && (
               <button 
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium text-gray-200 hover:text-white transition-colors duration-200"
+                className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-purple-100 text-xs font-medium text-gray-700 hover:text-purple-700 transition-colors duration-200"
                 onClick={() => setEditing(true)}
               >
                 Edit
@@ -304,7 +304,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
             )}
             {displayData.showFollow && (
               <button 
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium text-gray-200 hover:text-white transition-colors duration-200" 
+                className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-purple-100 text-xs font-medium text-gray-700 hover:text-purple-700 transition-colors duration-200" 
                 disabled={busy} 
                 onClick={toggleFollow}
               >
@@ -316,8 +316,8 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
 
         {/* Notes */}
         {activity.notes && (
-          <div className="mb-4 p-3 rounded-xl bg-black/30 border border-white/10">
-            <p className="text-sm text-gray-200 leading-relaxed">{activity.notes}</p>
+          <div className="mb-4 p-3 rounded-xl bg-gray-50 border border-gray-200">
+            <p className="text-sm text-gray-700 leading-relaxed">{activity.notes}</p>
           </div>
         )}
 
@@ -327,7 +327,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
             className={`group/bump flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
               localBumped 
                 ? 'bg-gradient-to-r from-purple-400 to-fuchsia-400 text-white shadow-lg shadow-purple-400/40 ring-2 ring-purple-400/30' 
-                : 'bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white'
+                : 'bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-700'
             }`}
             onClick={toggleBump}
             disabled={busy}
@@ -341,7 +341,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
           </button>
 
           <button
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-all duration-200"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 hover:bg-purple-100 text-gray-600 hover:text-purple-700 transition-all duration-200"
             onClick={() => setOpenComments(v => !v)}
           >
             <div className="relative">
@@ -349,7 +349,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               {localCommentCount > 0 && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full flex items-center justify-center">
                   <span className="text-[8px] font-bold text-white">{Math.min(localCommentCount, 9)}</span>
                 </div>
               )}
@@ -373,10 +373,10 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
                       <img 
                         src={c.profile_photo} 
                         alt="Profile" 
-                        className="w-7 h-7 rounded-full object-cover border border-white/20 flex-shrink-0"
+                        className="w-7 h-7 rounded-full object-cover border border-gray-200 flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center border border-white/20 flex-shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center border border-gray-200 flex-shrink-0">
                         <span className="text-white text-xs font-medium">
                           {(c.user_name || 'U')[0].toUpperCase()}
                         </span>
@@ -385,16 +385,16 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
                     
                     {/* Comment Bubble */}
                     <div className="flex-1 min-w-0">
-                      <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10 group-hover/comment:border-white/20 transition-colors duration-200">
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 backdrop-blur-sm rounded-2xl px-4 py-3 border border-gray-200 group-hover/comment:border-purple-300 transition-colors duration-200">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-white text-sm">
+                          <span className="font-semibold text-gray-900 text-sm">
                             {c.user_name || 'User'}
                           </span>
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-500">
                             {new Date(c.created_at).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-200 leading-relaxed break-words">
+                        <p className="text-sm text-gray-700 leading-relaxed break-words">
                           {c.comment}
                         </p>
                       </div>
@@ -407,7 +407,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
             {/* Load More Comments */}
             {localCommentCount > localComments.length && (
               <button 
-                className="text-sm text-gray-400 hover:text-gray-200 transition-colors duration-200"
+                className="text-sm text-gray-600 hover:text-purple-700 transition-colors duration-200"
                 onClick={async () => {
                   const { data } = await supabase
                     .from('bumps')
@@ -434,7 +434,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
             <div className="flex items-center gap-3 pt-2">
               <div className="flex-1 relative">
                 <input 
-                  className="w-full bg-gray-800/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-transparent transition-all duration-200"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-transparent transition-all duration-200"
                   placeholder="Add a thoughtful comment..."
                   value={comment}
                   onChange={e => setComment(e.target.value)}
@@ -443,8 +443,8 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
               <button 
                 className={`px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
                   comment.trim() 
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40' 
-                    : 'bg-white/5 text-white/40 cursor-not-allowed'
+                    ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40' 
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }`}
                 onClick={toggleBump}
                 disabled={busy || !comment.trim()}

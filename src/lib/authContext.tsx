@@ -92,7 +92,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setupRefreshInterval(data.session)
           
           if (data.session?.user) {
-            try { await ensureProfile(data.session.user) } catch { /* ignore */ }
+            try { 
+              await ensureProfile(data.session.user) 
+            } catch (e) { 
+              console.error('Profile creation failed:', e)
+            }
           }
         }
       } catch (e: any) {
@@ -118,7 +122,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (event === 'SIGNED_IN' && newSession?.user) {
-        try { await ensureProfile(newSession.user) } catch { /* ignore */ }
+        try { 
+          await ensureProfile(newSession.user) 
+        } catch (e) { 
+          console.error('Profile creation failed:', e)
+        }
       }
     })
     
