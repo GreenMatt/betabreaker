@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import ActivityCard from '@/components/ActivityCard'
 
 type OwnItem = {
   id: string
@@ -172,13 +173,10 @@ export default function FeedPage() {
         <div className="grid gap-2">
           {me.length === 0 && <div className="card text-base-subtext">No logs yet. Log your first climb!</div>}
           {me.map(item => (
-            <OwnLogRow
+            <ActivityCard
               key={item.id}
-              item={item}
-              bumpCount={meBumpCounts[item.id] || 0}
-              bumped={!!meBumped[item.id]}
-              comments={meComments[item.id] || []}
-              commentCount={meCommentCounts[item.id] || 0}
+              activity={item}
+              variant="own"
               onBumpChange={(bumped, delta) => {
                 setMeBumped(prev => ({ ...prev, [item.id]: bumped }))
                 setMeBumpCounts(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) + delta) }))
@@ -200,11 +198,10 @@ export default function FeedPage() {
         <div className="grid gap-2">
           {following.length === 0 && <div className="card text-base-subtext">No activity from people you follow.</div>}
           {following.map(item => (
-            <FollowRow
+            <ActivityCard
               key={item.id}
-              item={item}
-              comments={followingComments[item.id] || []}
-              commentCount={followingCommentCounts[item.id] || 0}
+              activity={item}
+              variant="following"
               onLocalUpdate={(u) => setFollowing(prev => prev.map(x => x.id === u.id ? u : x))}
             />
           ))}
@@ -221,143 +218,6 @@ export default function FeedPage() {
   )
 }
 
-async function toggleBump(logId: string, current: boolean, comment?: string) {
-  const { data: userRes } = await supabase.auth.getUser()
-  const uid = userRes.user?.id
-  if (!uid) throw new Error('Not signed in')
-  if (!current) {
-    const { error } = await supabase.from('bumps').insert({ log_id: logId, user_id: uid, comment: comment || null })
-    if (error) throw error
-    return true
-  }
-  if (comment && comment.trim()) {
-    const { error } = await supabase.from('bumps').upsert({ log_id: logId, user_id: uid, comment }, { onConflict: 'log_id,user_id' })
-    if (error) throw error
-    return true
-  }
-  const { error } = await supabase.from('bumps').delete().eq('log_id', logId).eq('user_id', uid)
-  if (error) throw error
-  return false
-}
-
-function OwnLogRow({ item, bumpCount, bumped, comments, commentCount, onBumpChange, onChanged }: { item: OwnItem, bumpCount: number, bumped: boolean, comments: Array<{ user_name: string | null, profile_photo: string | null, comment: string, created_at: string }>, commentCount: number, onBumpChange: (bumped: boolean, delta: number) => void, onChanged: (i: OwnItem) => void }) {
-  const [editing, setEditing] = useState(false)
-  const [localBumped, setLocalBumped] = useState(bumped)
-  const [localCount, setLocalCount] = useState(bumpCount)
-  const [comment, setComment] = useState('')
-  const [localComments, setLocalComments] = useState(comments)
-  const [localCommentCount, setLocalCommentCount] = useState(commentCount)
-  const [openComments, setOpenComments] = useState(false)
-  useEffect(() => { setLocalBumped(bumped) }, [bumped])
-  useEffect(() => { setLocalCount(bumpCount) }, [bumpCount])
-  useEffect(() => { setLocalComments(comments) }, [comments])
-  useEffect(() => { setLocalCommentCount(commentCount) }, [commentCount])
-  return (
-    <div className="card">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-sm text-base-subtext">{new Date(item.created_at).toLocaleString()}</div>
-          <div className="font-semibold">You {item.attempt_type} {item.climb.name}</div>
-          <div className="text-xs text-base-subtext">{item.climb.type} • Grade {item.climb.grade ?? '-'} • {item.climb.gym.name}</div>
-        </div>
-        <button className="bg-white/10 hover:bg-white/20 rounded-md px-3 py-1 text-sm" onClick={() => setEditing(true)}>Edit</button>
-      </div>
-      {item.notes && <div className="mt-2 text-sm">{item.notes}</div>}
-      <div className="mt-2 flex items-center gap-3 text-sm">
-        <button
-          className={`rounded-md px-3 py-1 ${localBumped ? 'bg-neon-purple text-white' : 'bg-white/10 hover:bg-white/20'}`}
-          onClick={async () => {
-            try {
-              const now = await toggleBump(item.id, localBumped)
-              setLocalBumped(now)
-              setLocalCount(c => Math.max(0, c + (now ? 1 : -1)))
-              onBumpChange(now, now ? 1 : -1)
-            } catch (e: any) { alert(e?.message || 'Failed to bump') }
-          }}
-        >👊 {localBumped ? 'Bumped' : 'Bump'} · {localCount}</button>
-        <div className="hidden flex items-center gap-1 text-base-subtext">
-          <span>💬</span>
-          <span>{localCommentCount || 0}</span>
-        </div>
-        <div className="hidden flex items-center gap-1 text-base-subtext">
-          <span>💬</span>
-          <span>{localCommentCount || 0}</span>
-        </div>
-        <div className="hidden flex items-center gap-1 text-base-subtext">
-          <span>💬</span>
-          <span>{localCommentCount || 0}</span>
-        </div>
-        <div className="hidden flex items-center gap-1 text-base-subtext">
-          <span>💬</span>
-          <span>{localCommentCount || 0}</span>
-        </div>
-        <div className="comment-bubble flex items-center gap-1 text-base-subtext">
-          <span>💬</span>
-          <span>{localCommentCount || 0}</span>
-        </div>
-        <div className="comment-bubble flex items-center gap-1 text-base-subtext">
-          <span>💬</span>
-          <span>{localCommentCount || 0}</span>
-        </div>
-        <div className="comment-bubble flex items-center gap-1 text-base-subtext">
-          <span>💬</span>
-          <span>{localCommentCount || 0}</span>
-        </div>
-        <button className="text-base-subtext hover:text-base-text" onClick={() => setOpenComments(v => !v)}>Comments{localCommentCount ? ` (${localCommentCount})` : ''}</button>
-      </div>
-
-      <div className="mt-3 rounded-lg border border-white/10 bg-white/5">
-        <button type="button" className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-white/10 rounded-t-lg" onClick={() => setOpenComments(v => !v)}>
-          <span className="font-medium">Comments{localCommentCount ? ` (${localCommentCount})` : ''}</span>
-          <span className="text-base-subtext">{openComments ? 'Hide' : 'Show'}</span>
-        </button>
-        {openComments && (
-          <div className="px-3 pb-3 pt-1 grid gap-2">
-            {(localComments.length > 0 ? localComments.slice(0, 2) : []).map((c, i) => (
-              <div key={i} className="flex">
-                <div className="max-w-full rounded-lg bg-black/30 px-3 py-2 text-sm">
-                  <span className="font-medium">{c.user_name || 'User'}:</span> {c.comment}
-                </div>
-              </div>
-            ))}
-            {localCommentCount > localComments.length && (
-              <button className="text-xs text-base-subtext text-left" onClick={async () => {
-                const { data } = await supabase
-                  .from('bumps')
-                  .select('comment, created_at, user:users(name, profile_photo)')
-                  .eq('log_id', item.id)
-                  .not('comment', 'is', null)
-                  .order('created_at', { ascending: false })
-                const all = (data || []).map((r: any) => ({
-                  user_name: (r as any).user?.name ?? null,
-                  profile_photo: (r as any).user?.profile_photo ?? null,
-                  comment: (r as any).comment as string,
-                  created_at: (r as any).created_at as string,
-                }))
-                setLocalComments(all)
-              }}>View more comments ({Math.max(0, localCommentCount - Math.min(2, localComments.length))})</button>
-            )}
-            <div className="flex items-center gap-2">
-              <input className="input flex-1" placeholder="Say something nice (optional)" value={comment} onChange={e => setComment(e.target.value)} />
-              <button className="btn-primary" onClick={async () => {
-                if (!comment.trim()) return
-                try {
-                  const now = await toggleBump(item.id, localBumped, comment)
-                  setLocalBumped(now)
-                  if (now && !bumped) { setLocalCount(c => c + 1); onBumpChange(true, 1) }
-                  setLocalCommentCount(c => c + 1)
-                  setLocalComments(prev => [{ user_name: 'You', profile_photo: null, comment, created_at: new Date().toISOString() }, ...prev])
-                  setComment('')
-                } catch (e: any) { alert(e?.message || 'Failed') }
-              }}>Send</button>
-            </div>
-          </div>
-        )}
-      </div>
-      {editing && <EditLogModal item={item} onClose={() => setEditing(false)} onSaved={onChanged} />}
-    </div>
-  )
-}
 
 function EditLogModal({ item, onClose, onSaved }: { item: OwnItem, onClose: () => void, onSaved: (i: OwnItem) => void }) {
   const [attempt_type, setAttemptType] = useState(item.attempt_type)
@@ -445,93 +305,3 @@ function StarRating({ value, onChange }: { value: 1|2|3|4|5, onChange: (v: 1|2|3
     </div>
   )
 }
-
-function FollowRow({ item, onLocalUpdate, comments, commentCount }: { item: FollowItem, onLocalUpdate: (i: FollowItem) => void, comments: Array<{ user_name: string | null, profile_photo: string | null, comment: string, created_at: string }>, commentCount: number }) {
-  const [count, setCount] = useState(item.bump_count || 0)
-  const [bumped, setBumped] = useState(!!item.bumped)
-  const [comment, setComment] = useState('')
-  const [localComments, setLocalComments] = useState(comments)
-  const [localCommentCount, setLocalCommentCount] = useState(commentCount)
-  const [openComments, setOpenComments] = useState(false)
-  useEffect(() => { setLocalComments(comments) }, [comments])
-  useEffect(() => { setLocalCommentCount(commentCount) }, [commentCount])
-  return (
-    <div className="card">
-      <div className="text-sm text-base-subtext">{new Date(item.created_at).toLocaleString()}</div>
-      <div className="font-semibold">{item.user_name || 'Climber'} {item.attempt_type} {item.climb_name}</div>
-      <div className="text-xs text-base-subtext">{item.type} • Grade {item.grade ?? '-'} • {item.gym_name}</div>
-      {item.notes && <div className="mt-1 text-sm">{item.notes}</div>}
-      
-      <div className="mt-2 flex items-center gap-3 text-sm">
-        <button
-          className={`rounded-md px-3 py-1 ${bumped ? 'bg-neon-purple text-white' : 'bg-white/10 hover:bg-white/20'}`}
-          onClick={async () => {
-            try {
-              const now = await toggleBump(item.id, bumped)
-              setBumped(now)
-              const nextCount = Math.max(0, count + (now ? 1 : -1))
-              setCount(nextCount)
-              onLocalUpdate({ ...item, bumped: now, bump_count: nextCount })
-            } catch (e: any) { alert(e?.message || 'Failed to bump') }
-          }}
-        >👊 {bumped ? 'Bumped' : 'Bump'} · {count}</button>
-        <button className="text-base-subtext hover:text-base-text" onClick={() => setOpenComments(v => !v)}>Comments{localCommentCount ? ` (${localCommentCount})` : ''}</button>
-      </div>
-      
-      <div className="mt-3 rounded-lg border border-white/10 bg-white/5">
-        <button type="button" className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-white/10 rounded-t-lg" onClick={() => setOpenComments(v => !v)}>
-          <span className="font-medium">Comments{localCommentCount ? ` (${localCommentCount})` : ''}</span>
-          <span className="text-base-subtext">{openComments ? 'Hide' : 'Show'}</span>
-        </button>
-        {openComments && (
-          <div className="px-3 pb-3 pt-1 grid gap-2">
-            {(localComments.length > 0 ? localComments.slice(0, 2) : []).map((c, i) => (
-              <div key={i} className="flex">
-                <div className="max-w-full rounded-lg bg-black/30 px-3 py-2 text-sm">
-                  <span className="font-medium">{c.user_name || 'User'}:</span> {c.comment}
-                </div>
-              </div>
-            ))}
-            {localCommentCount > localComments.length && (
-              <button className="text-xs text-base-subtext text-left" onClick={async () => {
-                const { data } = await supabase
-                  .from('bumps')
-                  .select('comment, created_at, user:users(name, profile_photo)')
-                  .eq('log_id', item.id)
-                  .not('comment', 'is', null)
-                  .order('created_at', { ascending: false })
-                const all = (data || []).map((r: any) => ({
-                  user_name: (r as any).user?.name ?? null,
-                  profile_photo: (r as any).user?.profile_photo ?? null,
-                  comment: (r as any).comment as string,
-                  created_at: (r as any).created_at as string,
-                }))
-                setLocalComments(all)
-              }}>View more comments ({Math.max(0, localCommentCount - Math.min(2, localComments.length))})</button>
-            )}
-            <div className="flex items-center gap-2">
-              <input className="input flex-1" placeholder="Say something nice (optional)" value={comment} onChange={e => setComment(e.target.value)} />
-              <button className="btn-primary" onClick={async () => {
-                if (!comment.trim()) return
-                try {
-                  const now = await toggleBump(item.id, bumped, comment)
-                  setBumped(now)
-                  if (now && !item.bumped) {
-                    const nextCount = count + 1
-                    setCount(nextCount)
-                    onLocalUpdate({ ...item, bumped: true, bump_count: nextCount })
-                  }
-                  setLocalCommentCount(c => c + 1)
-                  setLocalComments(prev => [{ user_name: 'You', profile_photo: null, comment, created_at: new Date().toISOString() }, ...prev])
-                  setComment('')
-                } catch (e: any) { alert(e?.message || 'Failed') }
-              }}>Send</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-

@@ -2,6 +2,7 @@
 // default runtime
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import ActivityCard from '@/components/ActivityCard'
 // Lazy-load Supabase on the client to avoid Edge runtime pulling Node builtins
 const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
@@ -523,7 +524,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
         {!activityLoading && activity.length === 0 && <div className="text-base-subtext">No activity yet.</div>}
         <div className="grid gap-2">
           {activity.map((a) => (
-            <GymActivityItem key={a.id} item={a} onChanged={() => loadActivity()} />
+            <ActivityCard key={a.id} activity={a} variant="gym" />
           ))}
           {activityHasMore && (
             <button className="bg-white/10 hover:bg-white/20 rounded-md px-3 py-2 text-sm" disabled={activityLoading} onClick={() => loadActivity(false)}>
@@ -784,144 +785,6 @@ function EditClimbModal({ initial, onClose, onSaved, gid, sections }: { initial:
   )
 }
 
-function GymActivityItem({ item, onChanged }: { item: any, onChanged: () => void }) {
-  const [bumped, setBumped] = useState<boolean>(!!item.bumped)
-  const [count, setCount] = useState<number>(item.bump_count || 0)
-  const [following, setFollowing] = useState<boolean | null>(null)
-  const [comment, setComment] = useState('')
-  const [showComment, setShowComment] = useState(false)
-  const [comments, setComments] = useState<any[]>(Array.isArray(item.comments) ? item.comments : [])
-  const [showAll, setShowAll] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [openComments, setOpenComments] = useState(false)
-
-  useEffect(() => {
-    (async () => {
-      const supabase = await getSupabase()
-      const { data: uidRes } = await supabase.auth.getUser()
-      const me = uidRes.user?.id
-      if (!me || me === item.user_id) { setFollowing(null); return }
-      const { data } = await supabase.from('follows').select('follower_id').eq('follower_id', me).eq('following_id', item.user_id).maybeSingle()
-      setFollowing(!!data)
-    })()
-  }, [item.user_id])
-
-  async function toggleBump() {
-    setBusy(true)
-    try {
-      const supabase = await getSupabase()
-      const { data: uidRes } = await supabase.auth.getUser()
-      const me = uidRes.user?.id
-      if (!me) throw new Error('Sign in')
-      if (!bumped) {
-        const { error } = await supabase.from('bumps').insert({ log_id: item.id, user_id: me })
-        if (error) throw error
-        setBumped(true); setCount(c => c + 1)
-      } else {
-        const { error } = await supabase.from('bumps').delete().eq('log_id', item.id).eq('user_id', me)
-        if (error) throw error
-        setBumped(false); setCount(c => Math.max(0, c - 1))
-      }
-      onChanged()
-    } catch (e: any) { alert(e?.message || 'Failed') } finally { setBusy(false) }
-  }
-
-  async function sendComment() {
-    setBusy(true)
-    try {
-      const supabase = await getSupabase()
-      const { data: uidRes } = await supabase.auth.getUser()
-      const me = uidRes.user?.id
-      if (!me) throw new Error('Sign in')
-      const { error } = await supabase.from('bumps').upsert({ log_id: item.id, user_id: me, comment }, { onConflict: 'log_id,user_id' })
-      if (error) throw error
-      if (!bumped) { setBumped(true); setCount(c => c + 1) }
-      setShowComment(false); setComment('')
-      onChanged()
-    } catch (e: any) { alert(e?.message || 'Failed') } finally { setBusy(false) }
-  }
-
-  async function toggleFollow() {
-    const supabase = await getSupabase()
-    const { data: uidRes } = await supabase.auth.getUser()
-    const me = uidRes.user?.id
-    if (!me) return alert('Sign in')
-    if (following === null) return
-    setBusy(true)
-    try {
-      if (!following) {
-        const { error } = await supabase.from('follows').insert({ follower_id: me, following_id: item.user_id })
-        if (error) throw error
-        setFollowing(true)
-      } else {
-        const { error } = await supabase.from('follows').delete().eq('follower_id', me).eq('following_id', item.user_id)
-        if (error) throw error
-        setFollowing(false)
-      }
-    } catch (e: any) { alert(e?.message || 'Failed') } finally { setBusy(false) }
-  }
-
-  return (
-    <div className="card">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-sm text-base-subtext">{new Date(item.created_at).toLocaleString()}</div>
-          <div className="font-semibold">{item.user_name || 'Climber'} {item.attempt_type} {item.climb_name}</div>
-          <div className="text-xs text-base-subtext">{item.type} • Grade {item.grade ?? '-'} • {item.gym_name}</div>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <button className={`rounded-md px-3 py-1 ${bumped ? 'bg-neon-purple text-white' : 'bg-white/10 hover:bg-white/20'}`} disabled={busy} onClick={toggleBump}>👊 {count}</button>
-          {following !== null && (
-            <button className="bg-white/10 hover:bg-white/20 rounded-md px-3 py-1" disabled={busy} onClick={toggleFollow}>{following ? 'Unfollow' : 'Follow'}</button>
-          )}
-        </div>
-      </div>
-      {item.notes && <div className="mt-1 text-sm">{item.notes}</div>}
-      <div className="mt-3 rounded-lg border border-white/10 bg-white/5">
-        <button type="button" className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-white/10 rounded-t-lg" onClick={() => setOpenComments(v => !v)}>
-          <span className="font-medium">Comments{comments.length ? ` (${comments.length})` : ''}</span>
-          <span className="text-base-subtext">{openComments ? 'Hide' : 'Show'}</span>
-        </button>
-        {openComments && (
-          <div className="px-3 pb-3 pt-1 grid gap-2">
-            {(showAll ? comments : comments.slice(0, 2)).map((c, i) => (
-              <div key={i} className="flex">
-                <div className="max-w-full rounded-lg bg-black/30 px-3 py-2 text-sm">
-                  <span className="font-medium">{c.user_name || 'User'}:</span> {c.comment}
-                </div>
-              </div>
-            ))}
-            {comments.length > 2 && (
-              <button className="text-xs text-base-subtext text-left" onClick={async () => {
-                if (!showAll) {
-                  const supabase = await getSupabase()
-                  const { data } = await supabase
-                    .from('bumps')
-                    .select('comment, created_at, user:users(name, profile_photo)')
-                    .eq('log_id', item.id)
-                    .not('comment', 'is', null)
-                    .order('created_at', { ascending: false })
-                  const all = (data || []).map((r: any) => ({
-                    user_name: r.user?.name,
-                    profile_photo: r.user?.profile_photo,
-                    comment: r.comment,
-                    created_at: r.created_at
-                  }))
-                  setComments(all)
-                }
-                setShowAll(v => !v)
-              }}>{showAll ? 'Show less' : `View more comments (${comments.length})`}</button>
-            )}
-            <div className="flex items-center gap-2">
-              <input className="input flex-1" placeholder="Say something nice (optional)" value={comment} onChange={e => setComment(e.target.value)} />
-              <button className="btn-primary" disabled={busy || !comment.trim()} onClick={async () => { if (!openComments) setOpenComments(true); await sendComment() }}>Send</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 
 
