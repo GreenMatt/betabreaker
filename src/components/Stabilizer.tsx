@@ -35,14 +35,35 @@ async function unregisterSWIfDisabled() {
     
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations().catch(() => [])
+      
+      // Check for phantom service worker
+      const hasController = !!navigator.serviceWorker.controller
+      if (hasController && regs.length === 0) {
+        console.log('[Stabilizer] ⚠️ PHANTOM SERVICE WORKER DETECTED!')
+        console.log('[Stabilizer] Controller exists but no registrations found')
+        // Try to clear the phantom controller
+        try {
+          navigator.serviceWorker.controller?.postMessage({ type: 'FORCE_TERMINATE' })
+        } catch (e) {
+          console.log('[Stabilizer] Failed to clear phantom controller:', e)
+        }
+      }
+      
       if (!enabled || slowConnection) {
-        console.log('[Stabilizer] Clearing service workers:', regs.length)
+        console.log('[Stabilizer] Clearing service workers:', regs.length, hasController ? '(+phantom)' : '')
         await Promise.all(regs.map(r => r.unregister().catch(() => {})))
+        
         // Best-effort clear related caches
         if (typeof caches !== 'undefined') {
           const names = await caches.keys()
-          console.log('[Stabilizer] Clearing caches:', names.filter(n => /betabreaker|^next|^workbox/i.test(n)))
+          const toDelete = names.filter(n => /betabreaker|^next|^workbox/i.test(n))
+          console.log('[Stabilizer] Clearing caches:', toDelete)
           await Promise.all(names.map(n => (/betabreaker|^next|^workbox/i.test(n) ? caches.delete(n) : Promise.resolve(false))))
+        }
+        
+        // If phantom controller still exists after clearing, log it
+        if (navigator.serviceWorker.controller) {
+          console.log('[Stabilizer] ⚠️ Controller still exists after clearing!')
         }
       } else if (enabled) {
         // Force update existing service worker to new version
@@ -58,21 +79,75 @@ async function unregisterSWIfDisabled() {
         }
       }
     }
-  } catch {}
+  } catch (e) {
+    console.log('[Stabilizer] Error in unregisterSWIfDisabled:', e)
+  }
 }
 
 // Expose manual SW clearing function to global scope for debugging
 if (typeof window !== 'undefined') {
-  (window as any).clearServiceWorkers = async () => {
-    console.log('[Debug] Manually clearing all service workers')
+  (window as any).debugServiceWorkers = async () => {
+    console.log('[Debug] === SERVICE WORKER DEBUG ===')
     if ('serviceWorker' in navigator) {
+      console.log('[Debug] Navigator SW support:', !!navigator.serviceWorker)
+      console.log('[Debug] Current controller:', navigator.serviceWorker.controller)
+      
       const regs = await navigator.serviceWorker.getRegistrations()
-      await Promise.all(regs.map(r => r.unregister()))
+      console.log('[Debug] Registrations found:', regs.length)
+      regs.forEach((reg, i) => {
+        console.log(`[Debug] Registration ${i}:`, {
+          scope: reg.scope,
+          active: !!reg.active,
+          installing: !!reg.installing,
+          waiting: !!reg.waiting,
+          state: reg.active?.state
+        })
+      })
+      
       if (typeof caches !== 'undefined') {
         const names = await caches.keys()
+        console.log('[Debug] Cache names:', names)
+      }
+      
+      // Check if there's a service worker but no registrations (phantom)
+      if (navigator.serviceWorker.controller && regs.length === 0) {
+        console.log('[Debug] ⚠️ PHANTOM SERVICE WORKER DETECTED!')
+        console.log('[Debug] Controller exists but no registrations found')
+      }
+    }
+  }
+  
+  (window as any).clearServiceWorkers = async () => {
+    console.log('[Debug] === NUCLEAR SERVICE WORKER CLEARING ===')
+    if ('serviceWorker' in navigator) {
+      // Step 1: Get all registrations  
+      const regs = await navigator.serviceWorker.getRegistrations()
+      console.log('[Debug] Found registrations:', regs.length)
+      
+      // Step 2: Unregister everything
+      await Promise.all(regs.map(async (reg) => {
+        console.log('[Debug] Unregistering:', reg.scope)
+        return reg.unregister()
+      }))
+      
+      // Step 3: Clear all caches
+      if (typeof caches !== 'undefined') {
+        const names = await caches.keys()
+        console.log('[Debug] Clearing caches:', names)
         await Promise.all(names.map(n => caches.delete(n)))
       }
-      console.log('[Debug] All service workers and caches cleared')
+      
+      // Step 4: Force clear any phantom controllers
+      if (navigator.serviceWorker.controller) {
+        console.log('[Debug] Controller still exists, attempting force clear')
+        try {
+          navigator.serviceWorker.controller.postMessage({ type: 'FORCE_TERMINATE' })
+        } catch (e) {
+          console.log('[Debug] Controller force clear failed:', e)
+        }
+      }
+      
+      console.log('[Debug] Clearing complete, reloading...')
       window.location.reload()
     }
   }
