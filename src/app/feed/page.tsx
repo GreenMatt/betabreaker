@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { supabaseWithRefresh as supabase } from '@/lib/supabaseWrapper'
 import ActivityCard from '@/components/ActivityCard'
 
 type OwnItem = {

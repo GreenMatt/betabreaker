@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { supabaseWithRefresh as supabase } from '@/lib/supabaseWrapper'
 import { useAuth } from '@/lib/authContext'
 
 type Session = {

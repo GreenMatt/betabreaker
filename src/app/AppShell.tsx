@@ -6,8 +6,15 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import UserNav from '@/components/UserNav'
 import Logo from '@/components/Logo'
 import Stabilizer from '@/components/Stabilizer'
+import { useEffect } from 'react'
+import { connectionManager } from '@/lib/connectionManager'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Initialize connection manager when app starts
+    connectionManager.getInstance()
+  }, [])
+
   return (
     <AuthProvider>
       <Stabilizer />

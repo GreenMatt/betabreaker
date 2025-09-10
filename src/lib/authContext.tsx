@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
+import { usePageVisibility } from '@/lib/usePageVisibility'
 
 type Provider = 'google' | 'facebook'
 
@@ -40,6 +41,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const bootedRef = useRef(false)
+  
+  // Add page visibility hook to handle session refresh when user returns
+  usePageVisibility()
 
   function clearSupabaseLocal() {
     try {
@@ -57,6 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let unsub: (() => void) | undefined
+    let refreshInterval: NodeJS.Timeout | undefined
+    
     // Safety: if bootstrap hangs (corrupt session or blocked storage), clear SB keys and continue
     const watchdog = setTimeout(() => {
       if (!bootedRef.current) {
@@ -64,31 +70,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false)
       }
     }, 5000)
+
+    // Setup periodic session refresh
+    const setupRefreshInterval = (session: Session | null) => {
+      if (refreshInterval) clearInterval(refreshInterval)
+      
+      if (session) {
+        // Refresh token every 45 minutes (tokens expire in 1 hour)
+        refreshInterval = setInterval(async () => {
+          try {
+            const { data, error } = await supabase.auth.refreshSession()
+            if (error) {
+              console.warn('Session refresh failed:', error.message)
+              // Let the auth state change handler deal with the expired session
+            }
+          } catch (e) {
+            console.warn('Session refresh error:', e)
+          }
+        }, 45 * 60 * 1000) // 45 minutes
+      }
+    }
+
     ;(async () => {
       try {
         const { data, error } = await withTimeout(supabase.auth.getSession(), 8000)
-        if (error) setError(error.message)
-        setSession(data.session)
-        setUser(data.session?.user ?? null)
+        if (error) {
+          setError(error.message)
+          setSession(null)
+          setUser(null)
+        } else {
+          setSession(data.session)
+          setUser(data.session?.user ?? null)
+          setupRefreshInterval(data.session)
+          
+          if (data.session?.user) {
+            try { await ensureProfile(data.session.user) } catch { /* ignore */ }
+          }
+        }
       } catch (e: any) {
-        // Don't clear localStorage on timeout - could be temporary network issue
-        // Only clear if watchdog timer already determined session is corrupt
         setError(e.message || 'Failed to load session')
+        setSession(null)
+        setUser(null)
       } finally {
         bootedRef.current = true
         clearTimeout(watchdog)
         setLoading(false)
       }
     })()
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log('Auth state change:', event, newSession ? 'session exists' : 'no session')
+      
       setSession(newSession)
       setUser(newSession?.user ?? null)
-      if (newSession?.user) {
+      setupRefreshInterval(newSession)
+      
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        setError(null) // Clear any previous errors
+      }
+      
+      if (event === 'SIGNED_IN' && newSession?.user) {
         try { await ensureProfile(newSession.user) } catch { /* ignore */ }
       }
     })
-    unsub = () => sub.subscription.unsubscribe()
-    return () => { unsub?.(); clearTimeout(watchdog) }
+    
+    unsub = () => {
+      sub.subscription.unsubscribe()
+      if (refreshInterval) clearInterval(refreshInterval)
+    }
+    
+    return () => { 
+      unsub?.()
+      clearTimeout(watchdog)
+      if (refreshInterval) clearInterval(refreshInterval)
+    }
   }, [])
 
   const signInWith = useCallback(async (provider: Provider) => {

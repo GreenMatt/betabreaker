@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import ActivityCard from '@/components/ActivityCard'
-// Lazy-load Supabase on the client to avoid Edge runtime pulling Node builtins
-const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
+// Lazy-load Supabase with session refresh wrapper
+const getSupabase = async () => (await import('@/lib/supabaseWrapper')).supabaseWithRefresh
 
 type Gym = { id: string; name: string; location: string | null }
 type Climb = { id: string; name: string; grade: number | null; type: 'boulder' | 'top_rope' | 'lead'; location: string | null; setter: string | null; color: string | null; dyno: boolean | null; section_id: string | null; section?: { name: string } | null }

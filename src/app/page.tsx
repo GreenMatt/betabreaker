@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
+import { supabaseWithRefresh as supabase } from '@/lib/supabaseWrapper'
 
 export default function Page() {
   const router = useRouter()
