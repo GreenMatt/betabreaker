@@ -68,3 +68,11 @@ self.addEventListener('fetch', (event) => {
   }
   // For everything else, let the browser handle it (no caching)
 })
+
+// Handle message port errors
+self.addEventListener('message', (event) => {
+  // Simple message acknowledgment to prevent port errors
+  if (event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ success: true })
+  }
+})
