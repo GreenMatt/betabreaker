@@ -35,7 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   function clearSupabaseLocal() {
     try {
-      if (typeof localStorage === 'undefined') return
+      if (typeof localStorage === 'undefined') {
+        console.warn('localStorage not available')
+        return
+      }
+      console.log('Clearing Supabase localStorage keys')
       const keys: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i)
@@ -43,8 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const lk = k.toLowerCase()
         if (lk.startsWith('sb-') || lk.includes('supabase')) keys.push(k)
       }
+      console.log('Found Supabase keys to clear:', keys)
       keys.forEach(k => { try { localStorage.removeItem(k) } catch {} })
-    } catch {}
+    } catch (e) {
+      console.error('Error clearing localStorage:', e)
+    }
   }
 
   useEffect(() => {
@@ -81,8 +88,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     ;(async () => {
       try {
+        console.log('Browser info:', { userAgent: navigator.userAgent, localStorage: !!localStorage })
         const { data, error } = await supabase.auth.getSession()
+        console.log('getSession result:', { data: data?.session ? 'session exists' : 'no session', error })
         if (error) {
+          console.error('Session error:', error)
           setError(error.message)
           setSession(null)
           setUser(null)
@@ -92,14 +102,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setupRefreshInterval(data.session)
           
           if (data.session?.user) {
+            console.log('Creating profile for user:', data.session.user.id)
             try { 
               await ensureProfile(data.session.user) 
+              console.log('Profile created successfully')
             } catch (e) { 
               console.error('Profile creation failed:', e)
             }
           }
         }
       } catch (e: any) {
+        console.error('Session bootstrap error:', e)
         setError(e.message || 'Failed to load session')
         setSession(null)
         setUser(null)
