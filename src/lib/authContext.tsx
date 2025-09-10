@@ -66,14 +66,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 5000)
     ;(async () => {
       try {
-        const { data, error } = await withTimeout(supabase.auth.getSession(), 3000)
+        const { data, error } = await withTimeout(supabase.auth.getSession(), 8000)
         if (error) setError(error.message)
         setSession(data.session)
         setUser(data.session?.user ?? null)
       } catch (e: any) {
-        if (e.message === 'operation timeout') {
-          clearSupabaseLocal()
-        }
+        // Don't clear localStorage on timeout - could be temporary network issue
+        // Only clear if watchdog timer already determined session is corrupt
         setError(e.message || 'Failed to load session')
       } finally {
         bootedRef.current = true
