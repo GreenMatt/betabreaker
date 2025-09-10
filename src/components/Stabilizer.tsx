@@ -16,12 +16,26 @@ function clearSupabaseLocal() {
   } catch {}
 }
 
+function isSlowConnection() {
+  try {
+    // Check if Network Information API is available
+    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection
+    if (connection) {
+      // Disable SW on slow connections (2G or slower)
+      return connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g'
+    }
+  } catch {}
+  return false
+}
+
 async function unregisterSWIfDisabled() {
   try {
     const enabled = process.env.NEXT_PUBLIC_ENABLE_SW === '1'
+    const slowConnection = isSlowConnection()
+    
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations().catch(() => [])
-      if (!enabled) {
+      if (!enabled || slowConnection) {
         await Promise.all(regs.map(r => r.unregister().catch(() => {})))
         // Best-effort clear related caches
         if (typeof caches !== 'undefined') {
@@ -51,7 +65,7 @@ export default function Stabilizer() {
           window.location.reload()
         }
       } catch {}
-    }, 8000)
+    }, 12000)
 
     // Global error burst recovery
     let errCount = 0

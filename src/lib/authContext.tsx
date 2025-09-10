@@ -17,6 +17,15 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function withTimeout<T>(promise: Promise<T>, timeout: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error('operation timeout')), timeout)
+    )
+  ])
+}
+
 async function ensureProfile(user: User) {
   const meta: any = user.user_metadata || {}
   const name = meta.full_name || meta.name || meta.user_name || (user.email ? user.email.split('@')[0] : null)
@@ -57,10 +66,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 5000)
     ;(async () => {
       try {
-        const { data, error } = await supabase.auth.getSession()
+        const { data, error } = await withTimeout(supabase.auth.getSession(), 3000)
         if (error) setError(error.message)
         setSession(data.session)
         setUser(data.session?.user ?? null)
+      } catch (e: any) {
+        if (e.message === 'operation timeout') {
+          clearSupabaseLocal()
+        }
+        setError(e.message || 'Failed to load session')
       } finally {
         bootedRef.current = true
         clearTimeout(watchdog)
@@ -82,7 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined } })
+      await withTimeout(
+        supabase.auth.signInWithOAuth({ provider, options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined } }),
+        10000
+      )
     } catch (e: any) {
       setError(e?.message ?? 'Failed to sign in')
     } finally {
@@ -94,7 +111,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined } })
+      await withTimeout(
+        supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined } }),
+        10000
+      )
     } catch (e: any) {
       setError(e?.message ?? 'Failed to send email link')
     } finally {

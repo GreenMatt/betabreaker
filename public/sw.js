@@ -3,6 +3,15 @@ const OFFLINE_URLS = [
   '/manifest.webmanifest'
 ]
 
+function fetchWithTimeout(request, timeout = 8000) {
+  return Promise.race([
+    fetch(request),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('fetch timeout')), timeout)
+    )
+  ])
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_URLS))
@@ -34,11 +43,11 @@ self.addEventListener('fetch', (event) => {
   // Cache-first only for immutable hashed assets under /_next/static
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request).then((res) => {
+      caches.match(request).then((cached) => cached || fetchWithTimeout(request).then((res) => {
         const copy = res.clone()
         caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
         return res
-      }))
+      }).catch(() => cached || new Response('', { status: 408 })))
     )
     return
   }
@@ -47,7 +56,7 @@ self.addEventListener('fetch', (event) => {
   if (request.destination === 'image' || request.destination === 'style' || request.destination === 'font') {
     event.respondWith(
       caches.match(request).then((cached) => {
-        const network = fetch(request).then((res) => {
+        const network = fetchWithTimeout(request, 5000).then((res) => {
           const copy = res.clone()
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
           return res
