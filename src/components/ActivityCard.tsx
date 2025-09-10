@@ -253,9 +253,9 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
   const displayData = getDisplayData()
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:border-white/10">
+    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/80 to-gray-800/60 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:border-white/20">
       {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
       <div className="relative p-5">
         {/* Header */}
@@ -277,17 +277,17 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
             )}
             
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-white/50 mb-1">
+              <div className="text-xs text-gray-400 mb-1">
                 {new Date(activity.created_at).toLocaleString()}
               </div>
-              <div className="font-semibold text-white/95 mb-1">
+              <div className="font-semibold text-white mb-1">
                 {displayData.userName} {activity.attempt_type} {displayData.climbName}
               </div>
-              <div className="text-xs text-white/60 flex items-center gap-1">
+              <div className="text-xs text-gray-300 flex items-center gap-1">
                 <span>{displayData.type}</span>
-                <span className="w-1 h-1 rounded-full bg-white/30" />
+                <span className="w-1 h-1 rounded-full bg-gray-500" />
                 <span>Grade {displayData.grade ?? '-'}</span>
-                <span className="w-1 h-1 rounded-full bg-white/30" />
+                <span className="w-1 h-1 rounded-full bg-gray-500" />
                 <span>{displayData.gymName}</span>
               </div>
             </div>
@@ -296,7 +296,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
           <div className="flex items-center gap-2 ml-3">
             {displayData.showEdit && (
               <button 
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium transition-colors duration-200"
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium text-gray-200 hover:text-white transition-colors duration-200"
                 onClick={() => setEditing(true)}
               >
                 Edit
@@ -304,7 +304,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
             )}
             {displayData.showFollow && (
               <button 
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium transition-colors duration-200" 
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium text-gray-200 hover:text-white transition-colors duration-200" 
                 disabled={busy} 
                 onClick={toggleFollow}
               >
@@ -316,8 +316,8 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
 
         {/* Notes */}
         {activity.notes && (
-          <div className="mb-4 p-3 rounded-xl bg-black/20 border border-white/5">
-            <p className="text-sm text-white/80 leading-relaxed">{activity.notes}</p>
+          <div className="mb-4 p-3 rounded-xl bg-black/30 border border-white/10">
+            <p className="text-sm text-gray-200 leading-relaxed">{activity.notes}</p>
           </div>
         )}
 
@@ -326,14 +326,14 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
           <button
             className={`group/bump flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
               localBumped 
-                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25' 
-                : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white'
+                ? 'bg-gradient-to-r from-purple-400 to-fuchsia-400 text-white shadow-lg shadow-purple-400/40 ring-2 ring-purple-400/30' 
+                : 'bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white'
             }`}
             onClick={toggleBump}
             disabled={busy}
           >
             <span className="text-lg group-hover/bump:scale-110 transition-transform duration-200">
-              {localBumped ? '💜' : '🤍'}
+              {localBumped ? '👊' : '✊'}
             </span>
             <span className="text-sm">
               {localBumped ? 'Bumped' : 'Bump'} {localCount > 0 && `• ${localCount}`}
@@ -341,7 +341,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
           </button>
 
           <button
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white/80 transition-all duration-200"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-all duration-200"
             onClick={() => setOpenComments(v => !v)}
           >
             <div className="relative">
@@ -385,16 +385,16 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
                     
                     {/* Comment Bubble */}
                     <div className="flex-1 min-w-0">
-                      <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10 group-hover/comment:border-white/20 transition-colors duration-200">
+                      <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/40 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10 group-hover/comment:border-white/20 transition-colors duration-200">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-white/90 text-sm">
+                          <span className="font-semibold text-white text-sm">
                             {c.user_name || 'User'}
                           </span>
-                          <span className="text-xs text-white/40">
+                          <span className="text-xs text-gray-400">
                             {new Date(c.created_at).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm text-white/80 leading-relaxed break-words">
+                        <p className="text-sm text-gray-200 leading-relaxed break-words">
                           {c.comment}
                         </p>
                       </div>
@@ -407,7 +407,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
             {/* Load More Comments */}
             {localCommentCount > localComments.length && (
               <button 
-                className="text-sm text-white/50 hover:text-white/70 transition-colors duration-200"
+                className="text-sm text-gray-400 hover:text-gray-200 transition-colors duration-200"
                 onClick={async () => {
                   const { data } = await supabase
                     .from('bumps')
@@ -434,7 +434,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
             <div className="flex items-center gap-3 pt-2">
               <div className="flex-1 relative">
                 <input 
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-200"
+                  className="w-full bg-gray-800/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-transparent transition-all duration-200"
                   placeholder="Add a thoughtful comment..."
                   value={comment}
                   onChange={e => setComment(e.target.value)}

@@ -2,7 +2,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
-import { usePageVisibility } from '@/lib/usePageVisibility'
 
 type Provider = 'google' | 'facebook'
 
@@ -41,9 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const bootedRef = useRef(false)
-  
-  // Add page visibility hook to handle session refresh when user returns
-  usePageVisibility()
 
   function clearSupabaseLocal() {
     try {
