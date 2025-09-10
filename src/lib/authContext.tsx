@@ -17,14 +17,6 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-function withTimeout<T>(promise: Promise<T>, timeout: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => 
-      setTimeout(() => reject(new Error('operation timeout')), timeout)
-    )
-  ])
-}
 
 async function ensureProfile(user: User) {
   const meta: any = user.user_metadata || {}
@@ -89,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     ;(async () => {
       try {
-        const { data, error } = await withTimeout(supabase.auth.getSession(), 8000)
+        const { data, error } = await supabase.auth.getSession()
         if (error) {
           setError(error.message)
           setSession(null)
@@ -146,10 +138,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      await withTimeout(
-        supabase.auth.signInWithOAuth({ provider, options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined } }),
-        10000
-      )
+      await supabase.auth.signInWithOAuth({ 
+        provider, 
+        options: { 
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined 
+        } 
+      })
     } catch (e: any) {
       setError(e?.message ?? 'Failed to sign in')
     } finally {
@@ -161,10 +155,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      await withTimeout(
-        supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined } }),
-        10000
-      )
+      await supabase.auth.signInWithOtp({ 
+        email, 
+        options: { 
+          emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined 
+        } 
+      })
     } catch (e: any) {
       setError(e?.message ?? 'Failed to send email link')
     } finally {
