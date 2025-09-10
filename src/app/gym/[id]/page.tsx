@@ -37,20 +37,25 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     let mounted = true
     ;(async () => {
-      const supabase = await getSupabase()
-      setLoading(true)
-      setError(null)
-      const [gRes, cRes, aRes, sRes] = await Promise.all([
-        supabase.from('gyms').select('id,name,location').eq('id', gid).maybeSingle(),
-        supabase.from('climbs').select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)').eq('gym_id', gid).order('created_at', { ascending: false }).limit(12),
-        supabase.rpc('is_gym_admin', { gid }),
-        supabase.from('gym_sections').select('id,name').eq('gym_id', gid).order('name', { ascending: true })
-      ])
-      if (!mounted) return
-      if (gRes.error) setError(gRes.error.message)
-      else setGym(gRes.data)
-      if (cRes.error) setError(cRes.error.message)
-      else {
+      try {
+        const supabase = await getSupabase()
+        setLoading(true)
+        setError(null)
+        const [gRes, cRes, aRes, sRes] = await Promise.all([
+          supabase.from('gyms').select('id,name,location').eq('id', gid).maybeSingle(),
+          supabase.from('climbs').select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)').eq('gym_id', gid).order('created_at', { ascending: false }).limit(12),
+          supabase.rpc('is_gym_admin', { gid }),
+          supabase.from('gym_sections').select('id,name').eq('gym_id', gid).order('name', { ascending: true })
+        ])
+        if (!mounted) return
+        if (gRes.error) setError(gRes.error.message)
+        else setGym(gRes.data)
+      
+      if (cRes.error) {
+        console.error('[GymPage] Climbs query failed:', cRes.error)
+        setError(cRes.error.message)
+        setClimbs([]) // Set empty array on error to prevent cascade
+      } else {
         const raw = (cRes.data || []) as any[]
         // Normalize section to object (not array) to match Climb type
         const list: Climb[] = raw.map((x: any) => ({
@@ -70,36 +75,63 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
         setClimbs(list)
         const ids = list.map((x: any) => x.id)
         if (ids.length) {
-          const { data: photos } = await supabase
-            .from('climb_photos')
-            .select('id, climb_id, created_at')
-            .in('climb_id', ids)
-            .order('created_at', { ascending: false })
-          const counts: Record<string, number> = {}
-          const previewMap: Record<string, string | null> = {}
-          for (const p of photos || []) {
-            const cid = (p as any).climb_id as string
-            counts[cid] = (counts[cid] || 0) + 1
-            // Skip heavy base64 preload; previews lazy-loaded per card if needed
-          }
-          if (mounted) {
-            setPhotoCounts(counts)
-            setPreviews(previewMap)
-            // Warm up previews for all visible climbs
-            const allIds = list.map((x: any) => x.id)
-            allIds.forEach((cid: string) => { if (previewMap[cid] === undefined) fetchPreview(cid) })
+          try {
+            const { data: photos, error: photoError } = await supabase
+              .from('climb_photos')
+              .select('id, climb_id, created_at')
+              .in('climb_id', ids)
+              .order('created_at', { ascending: false })
+              
+            if (photoError) {
+              console.error('[GymPage] Photos query failed:', photoError)
+              setPhotoCounts({})
+              setPreviews({})
+            } else {
+              const counts: Record<string, number> = {}
+              const previewMap: Record<string, string | null> = {}
+              for (const p of photos || []) {
+                const cid = (p as any).climb_id as string
+                counts[cid] = (counts[cid] || 0) + 1
+                // Skip heavy base64 preload; previews lazy-loaded per card if needed
+              }
+              if (mounted) {
+                setPhotoCounts(counts)
+                setPreviews(previewMap)
+                // Warm up previews for all visible climbs
+                const allIds = list.map((x: any) => x.id)
+                allIds.forEach((cid: string) => { if (previewMap[cid] === undefined) fetchPreview(cid) })
+              }
+            }
+          } catch (e) {
+            console.error('[GymPage] Photos query exception:', e)
+            setPhotoCounts({})
+            setPreviews({})
           }
         } else {
           setPhotoCounts({})
           setPreviews({})
         }
       }
-      if (!aRes.error) setIsAdmin(Boolean(aRes.data))
+      if (aRes.error) {
+        console.error('[GymPage] Admin check failed:', aRes.error)
+        setIsAdmin(false)
+      } else {
+        setIsAdmin(Boolean(aRes.data))
+      }
+      
       // Determine if gym is already claimed by any admin
       try {
-        const { data: admins } = await supabase.from('gym_admins').select('user_id').eq('gym_id', gid).limit(1)
-        setClaimed((admins || []).length > 0)
-      } catch { setClaimed(false) }
+        const { data: admins, error: adminError } = await supabase.from('gym_admins').select('user_id').eq('gym_id', gid).limit(1)
+        if (adminError) {
+          console.error('[GymPage] Gym admins query failed:', adminError)
+          setClaimed(false)
+        } else {
+          setClaimed((admins || []).length > 0)
+        }
+      } catch (e) { 
+        console.error('[GymPage] Gym admins query exception:', e)
+        setClaimed(false) 
+      }
       if (!sRes.error) setSections(sRes.data || [])
       // Load recent activity and following (non-blocking)
       loadActivity().catch(() => {})
@@ -107,23 +139,35 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       setClimbsPage(0)
       setClimbsHasMore(list.length === 12)
       setLoading(false)
+      } catch (e) {
+        console.error('[GymPage] Fatal error in useEffect:', e)
+        setError('Failed to load gym data. Please refresh the page.')
+        setLoading(false)
+      }
     })()
     return () => { mounted = false }
   }, [gid])
 
   async function loadActivity(reset: boolean = true) {
     setActivityLoading(true)
-    const supabase = await getSupabase()
-    const pageSize = 6
-    const page = reset ? 0 : (activityPage + 1)
-    const { data, error } = await supabase.rpc('get_gym_activity', { gid, page_size: pageSize, page })
-    if (!error) {
-      const rows = (data as any[]) || []
-      setActivity(prev => reset ? rows : [...prev, ...rows])
-      setActivityPage(page)
-      setActivityHasMore(rows.length === pageSize)
+    try {
+      const supabase = await getSupabase()
+      const pageSize = 6
+      const page = reset ? 0 : (activityPage + 1)
+      const { data, error } = await supabase.rpc('get_gym_activity', { gid, page_size: pageSize, page })
+      if (error) {
+        console.error('[GymPage] Activity query failed:', error)
+      } else {
+        const rows = (data as any[]) || []
+        setActivity(prev => reset ? rows : [...prev, ...rows])
+        setActivityPage(page)
+        setActivityHasMore(rows.length === pageSize)
+      }
+    } catch (e) {
+      console.error('[GymPage] Activity query exception:', e)
+    } finally {
+      setActivityLoading(false)
     }
-    setActivityLoading(false)
   }
 
   async function loadMoreClimbs() {
