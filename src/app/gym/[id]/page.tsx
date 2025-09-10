@@ -119,26 +119,32 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
         setIsAdmin(Boolean(aRes.data))
       }
       
-      // Determine if gym is already claimed by any admin
-      try {
-        const { data: admins, error: adminError } = await supabase.from('gym_admins').select('user_id').eq('gym_id', gid).limit(1)
-        if (adminError) {
-          console.error('[GymPage] Gym admins query failed:', adminError)
-          setClaimed(false)
-        } else {
-          setClaimed((admins || []).length > 0)
+        // Determine if gym is already claimed by any admin
+        try {
+          const { data: admins, error: adminError } = await supabase.from('gym_admins').select('user_id').eq('gym_id', gid).limit(1)
+          if (adminError) {
+            console.error('[GymPage] Gym admins query failed:', adminError)
+            // If it's a policy recursion error, assume unclaimed for now
+            if (adminError.code === '42P17') {
+              console.warn('[GymPage] RLS policy infinite recursion detected, assuming gym is unclaimed')
+              setClaimed(false)
+            } else {
+              setClaimed(false)
+            }
+          } else {
+            setClaimed((admins || []).length > 0)
+          }
+        } catch (e) { 
+          console.error('[GymPage] Gym admins query exception:', e)
+          setClaimed(false) 
         }
-      } catch (e) { 
-        console.error('[GymPage] Gym admins query exception:', e)
-        setClaimed(false) 
-      }
-      if (!sRes.error) setSections(sRes.data || [])
-      // Load recent activity and following (non-blocking)
-      loadActivity().catch(() => {})
-      loadFollowing().catch(() => {})
-      setClimbsPage(0)
-      setClimbsHasMore(list.length === 12)
-      setLoading(false)
+        if (!sRes.error) setSections(sRes.data || [])
+        // Load recent activity and following (non-blocking)
+        loadActivity().catch(() => {})
+        loadFollowing().catch(() => {})
+        setClimbsPage(0)
+        setClimbsHasMore(climbs.length === 12)
+        setLoading(false)
       } catch (e) {
         console.error('[GymPage] Fatal error in useEffect:', e)
         setError('Failed to load gym data. Please refresh the page.')
