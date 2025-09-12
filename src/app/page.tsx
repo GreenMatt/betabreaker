@@ -14,15 +14,18 @@ export default function Page() {
     
     // Wait for initial session to be established
     const initializeData = async () => {
+      console.log('Main page initializing data...')
       const { data: sessionData } = await supabase.auth.getSession()
+      console.log('Main page session check:', { hasSession: !!sessionData?.session })
+      
       if (!sessionData?.session?.user) {
+        console.log('No session found, redirecting to login')
         router.replace('/login')
       } else {
-        // Add small delay to ensure session is fully established
-        setTimeout(() => {
-          loadStats()
-          loadAllBadges()
-        }, 100)
+        console.log('Session found, loading data for user:', sessionData.session.user.id)
+        // Load data immediately when we have a session
+        loadStats()
+        loadAllBadges()
       }
     }
     
@@ -33,11 +36,9 @@ export default function Page() {
       if (!session?.user) {
         router.replace('/login')
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Add small delay to ensure session is fully established
-        setTimeout(() => {
-          loadStats()
-          loadAllBadges()
-        }, 100)
+        console.log('Auth event triggered, loading data')
+        loadStats()
+        loadAllBadges()
       }
     })
     unsub = () => sub.subscription.unsubscribe()
