@@ -68,14 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (isOAuthCallback) {
           console.log('OAuth callback detected, extending watchdog timer')
-          // Give OAuth callbacks more time to complete
+          // Give OAuth callbacks much more time to complete
           const extendedWatchdog = setTimeout(() => {
             if (!bootedRef.current) {
-              console.log('OAuth callback timed out, clearing session')
+              console.log('OAuth callback timed out after extended wait, clearing session')
               clearSupabaseLocal()
               setLoading(false)
             }
-          }, 5000) // Additional 5 seconds for OAuth
+          }, 15000) // 15 seconds for OAuth processing
           watchdogRef.current = extendedWatchdog
         } else {
           console.log('Bootstrap timed out, clearing session')
@@ -120,13 +120,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isOAuthCallback = typeof window !== 'undefined' && 
           (window.location.search.includes('code=') || window.location.hash.includes('access_token='))
         
+        let data, error
+        
         if (isOAuthCallback) {
           console.log('OAuth callback detected, waiting for session processing...')
-          // For OAuth callbacks, wait a bit for Supabase to process the tokens
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          // For OAuth callbacks, retry getting session multiple times
+          
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            console.log(`OAuth session attempt ${attempt}/3...`)
+            await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds between attempts
+            
+            const result = await supabase.auth.getSession()
+            data = result.data
+            error = result.error
+            
+            if (data?.session) {
+              console.log(`OAuth session found on attempt ${attempt}`)
+              break
+            }
+          }
+        } else {
+          const result = await supabase.auth.getSession()
+          data = result.data
+          error = result.error
         }
         
-        const { data, error } = await supabase.auth.getSession()
         console.log('getSession result:', { data: data?.session ? 'session exists' : 'no session', error })
         
         if (error) {
