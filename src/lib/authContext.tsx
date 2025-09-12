@@ -34,6 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('Simple auth: Starting...')
     
+    // Safety timeout - never stay loading forever
+    const safetyTimeout = setTimeout(() => {
+      console.log('Simple auth: Safety timeout - setting loading false')
+      setLoading(false)
+    }, 10000) // 10 seconds max
+    
     // Simple bootstrap - no watchdogs, no complex timers
     const initAuth = async () => {
       try {
@@ -57,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Simple auth: Init error:', e)
         setError(e.message)
       } finally {
+        clearTimeout(safetyTimeout)
         setLoading(false)
       }
     }
@@ -71,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newSession?.user ?? null)
       
       if (event === 'SIGNED_IN' && newSession?.user) {
+        console.log('Simple auth: User signed in, ensuring profile...')
         try {
           await ensureProfile(newSession.user)
           console.log('Simple auth: Profile ensured on sign-in')
@@ -83,11 +91,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setError(null)
       }
 
+      // Always set loading false after processing auth state change
+      console.log('Simple auth: Setting loading false')
       setLoading(false)
     })
 
     return () => {
       subscription.unsubscribe()
+      clearTimeout(safetyTimeout)
     }
   }, [])
 
