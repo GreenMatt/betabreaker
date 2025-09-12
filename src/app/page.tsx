@@ -46,79 +46,84 @@ export default function Page() {
   }, [router])
 
   async function loadStats() {
-    console.log('Loading stats...')
-    
-    // Check current session first
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    console.log('Current session:', { 
-      hasSession: !!sessionData?.session, 
-      sessionError: sessionError?.message,
-      userId: sessionData?.session?.user?.id 
-    })
-    
-    if (!sessionData?.session) {
-      console.warn('No active session when loading stats - clearing data and redirecting')
+    try {
+      console.log('Loading stats...')
+      
+      // Check current session first
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      console.log('Current session:', { 
+        hasSession: !!sessionData?.session, 
+        sessionError: sessionError?.message,
+        userId: sessionData?.session?.user?.id 
+      })
+      
+      if (!sessionData?.session) {
+        console.warn('No active session when loading stats - clearing data and redirecting')
+        setStats(null)
+        router.replace('/login')
+        return
+      }
+      
+      const rpc = await supabase.rpc('get_user_stats')
+      console.log('Stats RPC result:', rpc)
+      if (!rpc.error && rpc.data) {
+        const row = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data
+        if (row) {
+          setStats({ climbs: row.climb_count ?? 0, highest: row.highest_grade ?? 0, badges: row.badge_count ?? 0, fas: row.fa_count ?? 0 })
+          return
+        }
+      } else if (rpc.error) {
+        console.error('Stats loading error:', rpc.error)
+      }
+      
+      // Fallback if RPC not installed yet
+      console.log('Using fallback stats loading...')
+      const { data: u } = await supabase.auth.getUser()
+      const uid = u.user?.id
+      console.log('Fallback user ID:', uid)
+      if (!uid) {
+        console.warn('No user ID available for fallback stats')
+        return
+      }
+      
+      const logs = await supabase.from('climb_logs').select('climb:climbs(grade)').eq('user_id', uid)
+      console.log('Climb logs query result:', { data: logs.data, error: logs.error })
+      
+      if (logs.error) {
+        console.error('Failed to load climb logs, checking session validity...')
+        const { data: currentSession } = await supabase.auth.getSession()
+        if (!currentSession?.session) {
+          console.warn('Session invalid, redirecting to login')
+          router.replace('/login')
+          return
+        }
+      }
+      
+      const climbs = logs.data || []
+      const highest = climbs.reduce((m, r: any) => Math.max(m, r.climb?.grade ?? 0), 0)
+      
+      const { count: c1, error: c1Error } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)
+      console.log('Climb logs count:', { count: c1, error: c1Error?.message })
+      
+      const { count: c2, error: c2Error } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)
+      console.log('User badges count:', { count: c2, error: c2Error?.message })
+      
+      if (c1Error || c2Error) {
+        console.error('Database queries failed, checking session validity...')
+        const { data: currentSession } = await supabase.auth.getSession()
+        if (!currentSession?.session) {
+          console.warn('Session invalid, redirecting to login')
+          router.replace('/login')
+          return
+        }
+      }
+      
+      // Fallback has no FA info; set to 0
+      setStats({ climbs: c1 ?? climbs.length, highest, badges: c2 ?? 0, fas: 0 })
+    } catch (error) {
+      console.error('Error in loadStats:', error)
       setStats(null)
-      router.replace('/login')
-      return
     }
-    
-    const rpc = await supabase.rpc('get_user_stats')
-    console.log('Stats RPC result:', rpc)
-    if (!rpc.error && rpc.data) {
-      const row = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data
-      if (row) {
-        setStats({ climbs: row.climb_count ?? 0, highest: row.highest_grade ?? 0, badges: row.badge_count ?? 0, fas: row.fa_count ?? 0 })
-        return
-      }
-    } else if (rpc.error) {
-      console.error('Stats loading error:', rpc.error)
-    }
-    
-    // Fallback if RPC not installed yet
-    console.log('Using fallback stats loading...')
-    const { data: u } = await supabase.auth.getUser()
-    const uid = u.user?.id
-    console.log('Fallback user ID:', uid)
-    if (!uid) {
-      console.warn('No user ID available for fallback stats')
-      return
-    }
-    
-    const logs = await supabase.from('climb_logs').select('climb:climbs(grade)').eq('user_id', uid)
-    console.log('Climb logs query result:', { data: logs.data, error: logs.error })
-    
-    if (logs.error) {
-      console.error('Failed to load climb logs, checking session validity...')
-      const { data: currentSession } = await supabase.auth.getSession()
-      if (!currentSession?.session) {
-        console.warn('Session invalid, redirecting to login')
-        router.replace('/login')
-        return
-      }
-    }
-    
-    const climbs = logs.data || []
-    const highest = climbs.reduce((m, r: any) => Math.max(m, r.climb?.grade ?? 0), 0)
-    
-    const { count: c1, error: c1Error } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)
-    console.log('Climb logs count:', { count: c1, error: c1Error?.message })
-    
-    const { count: c2, error: c2Error } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)
-    console.log('User badges count:', { count: c2, error: c2Error?.message })
-    
-    if (c1Error || c2Error) {
-      console.error('Database queries failed, checking session validity...')
-      const { data: currentSession } = await supabase.auth.getSession()
-      if (!currentSession?.session) {
-        console.warn('Session invalid, redirecting to login')
-        router.replace('/login')
-        return
-      }
-    }
-    
-    // Fallback has no FA info; set to 0
-    setStats({ climbs: c1 ?? climbs.length, highest, badges: c2 ?? 0, fas: 0 })
   }
 
   function resolveIconUrl(icon: string | null): string {
@@ -130,36 +135,41 @@ export default function Page() {
   }
 
   async function loadAllBadges() {
-    console.log('Loading badges...')
-    
-    // Check current session first
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    console.log('Session for badges:', { 
-      hasSession: !!sessionData?.session, 
-      sessionError: sessionError?.message 
-    })
-    
-    const { data, error } = await supabase.from('badges').select('id,name,icon,description').order('name')
-    console.log('Badges result:', { 
-      data: data ? `${data.length} items` : 'null', 
-      error: error?.message,
-      fullError: error 
-    })
-    
-    if (!error) {
-      setAllBadges(data || [])
-    } else {
-      console.error('Badges loading error:', error)
-      // Check if this is a session issue
-      if (error.message?.includes('JWT') || error.code === 'PGRST301') {
-        console.warn('Session invalid during badges loading, checking session...')
-        const { data: currentSession } = await supabase.auth.getSession()
-        if (!currentSession?.session) {
-          console.warn('Session invalid, redirecting to login')
-          setAllBadges([])
-          router.replace('/login')
+    try {
+      console.log('Loading badges...')
+      
+      // Check current session first
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      console.log('Session for badges:', { 
+        hasSession: !!sessionData?.session, 
+        sessionError: sessionError?.message 
+      })
+      
+      const { data, error } = await supabase.from('badges').select('id,name,icon,description').order('name')
+      console.log('Badges result:', { 
+        data: data ? `${data.length} items` : 'null', 
+        error: error?.message,
+        fullError: error 
+      })
+      
+      if (!error) {
+        setAllBadges(data || [])
+      } else {
+        console.error('Badges loading error:', error)
+        // Check if this is a session issue
+        if (error.message?.includes('JWT') || error.code === 'PGRST301') {
+          console.warn('Session invalid during badges loading, checking session...')
+          const { data: currentSession } = await supabase.auth.getSession()
+          if (!currentSession?.session) {
+            console.warn('Session invalid, redirecting to login')
+            setAllBadges([])
+            router.replace('/login')
+          }
         }
       }
+    } catch (error) {
+      console.error('Error in loadAllBadges:', error)
+      setAllBadges([])
     }
   }
 
