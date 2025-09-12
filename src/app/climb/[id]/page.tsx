@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { VideoAddForm, VideoPreview, isSupportedVideoUrl } from './VideoEmbed'
 import { useSearchParams } from 'next/navigation'
 const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
@@ -109,6 +110,11 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
   }
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        {climb?.gym && (
+          <Link href={`/gym/${climb.gym.id}`} className="text-sm text-base-subtext">← {climb.gym.name}</Link>
+        )}
+      </div>
       <div className="card">
         <h1 className="text-xl font-bold">{climb?.name || 'Climb'} {climb?.color ? (<span className="inline">{'\u2022'} {climb.color}</span>) : ''}</h1>
         <div className="text-sm text-base-subtext">{climb?.type} <span>{'\u2022'}</span> Grade {climb?.grade ?? '-'} <span>{'\u2022'}</span> {climb?.gym?.name}</div>
