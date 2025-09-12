@@ -61,11 +61,23 @@ export default function Page() {
                 expiresAt: parsed?.expires_at ? new Date(parsed.expires_at * 1000).toLocaleString() : 'N/A'
               })
               
-              // If we have a stored session that's not expired, use it
+              // If we have a stored session that's not expired, restore it to the client
               if (parsed?.access_token && parsed?.expires_at && parsed.expires_at > Date.now() / 1000) {
-                console.log('Simple page: Using valid localStorage session')
-                sessionData = { session: parsed }
-                sessionError = null
+                console.log('Simple page: Using valid localStorage session - restoring to client')
+                try {
+                  // Set the session on the client so RPC calls work
+                  await supabase.auth.setSession({
+                    access_token: parsed.access_token,
+                    refresh_token: parsed.refresh_token
+                  })
+                  console.log('Simple page: Session restored to client successfully')
+                  sessionData = { session: parsed }
+                  sessionError = null
+                } catch (restoreError: any) {
+                  console.error('Simple page: Failed to restore session to client:', restoreError.message)
+                  sessionData = { session: null }
+                  sessionError = { message: 'Session restore failed' }
+                }
               } else {
                 console.log('Simple page: localStorage session expired or invalid')
                 sessionData = { session: null }
