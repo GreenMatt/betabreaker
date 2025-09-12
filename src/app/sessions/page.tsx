@@ -99,8 +99,8 @@ export default function SessionsPage() {
   const grouped = useMemo(() => {
     const m = new Map<string, Session[]>()
     for (const s of items) {
-      const d = new Date(s.date)
-      const key = d.toISOString().slice(0,10)
+      // Use the date string directly to avoid timezone issues
+      const key = s.date.slice(0, 10)
       const arr = m.get(key) || []
       arr.push(s)
       m.set(key, arr)
@@ -166,23 +166,43 @@ export default function SessionsPage() {
 
   const dayCells: Array<JSX.Element> = []
   for (let i = 0; i < startDay; i++) {
-    dayCells.push(<div key={`blank-${i}`} className="p-2 h-16" />)
+    dayCells.push(<div key={`blank-${i}`} className="p-3 h-20" />)
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const keyDate = new Date(viewYear, viewMonth, d)
     const key = keyDate.toISOString().slice(0,10)
     const list = grouped.get(key) || []
+    const isToday = key === new Date().toISOString().slice(0,10)
     dayCells.push(
-      <button key={`d-${d}`} className="p-2 h-16 border border-white/5 rounded text-left hover:bg-white/5" onClick={() => setDate(key)}>
-        <div className="text-xs text-base-subtext">{d}</div>
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {list.slice(0,4).map((s, idx) => (
-            <Icon key={s.id + idx} type={normalize(s.activity_type)} size="md" />
+      <button 
+        key={`d-${d}`} 
+        className={`
+          relative p-3 h-20 border rounded-lg text-left transition-all duration-200
+          ${isToday 
+            ? 'border-neon-purple/50 bg-neon-purple/5 shadow-lg shadow-neon-purple/10' 
+            : 'border-white/10 hover:border-white/20 hover:bg-white/5'
+          }
+        `} 
+        onClick={() => setDate(key)}
+      >
+        <div className={`text-sm font-medium mb-1 ${isToday ? 'text-neon-purple' : 'text-white'}`}>
+          {d}
+        </div>
+        <div className="flex flex-wrap gap-1 items-start">
+          {list.slice(0,3).map((s, idx) => (
+            <Icon key={s.id + idx} type={normalize(s.activity_type)} size="sm" />
           ))}
-          {list.length > 4 && (
-            <span className="text-[10px] text-base-subtext">+{list.length - 4}</span>
+          {list.length > 3 && (
+            <span className="text-[9px] text-base-subtext bg-white/10 px-1 py-0.5 rounded">
+              +{list.length - 3}
+            </span>
           )}
         </div>
+        {list.length > 0 && (
+          <div className="absolute top-1 right-1">
+            <span className="inline-block w-2 h-2 bg-neon-purple/60 rounded-full"></span>
+          </div>
+        )}
       </button>
     )
   }
@@ -191,15 +211,29 @@ export default function SessionsPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Training Log</h1>
       <div className="card">
-        <div className="mb-2 text-sm text-base-subtext flex items-center justify-between">
-          <button className="btn-secondary" onClick={prevMonth}>&larr; Prev</button>
-          <div>{new Date(viewYear, viewMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}</div>
-          <button className="btn-secondary" onClick={nextMonth}>Next &rarr;</button>
+        <div className="mb-4 flex items-center justify-between">
+          <button 
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm transition-colors" 
+            onClick={prevMonth}
+          >
+            <span className="text-lg">←</span> Prev
+          </button>
+          <h2 className="text-lg font-semibold text-center">
+            {new Date(viewYear, viewMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+          </h2>
+          <button 
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm transition-colors" 
+            onClick={nextMonth}
+          >
+            Next <span className="text-lg">→</span>
+          </button>
         </div>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-base-subtext mb-1">
-          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
+        <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-base-subtext mb-3">
+          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+            <div key={d} className="py-2">{d}</div>
+          ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-2">
           {dayCells}
         </div>
       </div>
@@ -325,20 +359,65 @@ function Stats({ items }: { items: Session[] }) {
     return counts
   }, [items])
 
+  const totalSessions = items.length
+  const totalMinutes = items.reduce((sum, s) => sum + (s.duration_mins || 0), 0)
+  const maxCount = Math.max(...Array.from(totals.values()).map(v => v.count), 1)
+
   return (
     <div className="card">
-      <h2 className="font-semibold mb-2">This Month Stats</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <h2 className="font-semibold mb-4">This Month Stats</h2>
+      
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-neon-purple/10 to-neon-purple/5 rounded-lg p-4 border border-neon-purple/20">
+          <div className="text-2xl font-bold text-neon-purple">{totalSessions}</div>
+          <div className="text-sm text-base-subtext">Total Sessions</div>
+        </div>
+        <div className="bg-gradient-to-br from-sky-500/10 to-sky-500/5 rounded-lg p-4 border border-sky-500/20">
+          <div className="text-2xl font-bold text-sky-400">{Math.round(totalMinutes / 60 * 10) / 10}h</div>
+          <div className="text-sm text-base-subtext">Training Time</div>
+        </div>
+      </div>
+
+      {/* Activity Breakdown */}
+      <div className="space-y-3">
         {(['Climb','Board','Hang','Strength','Cardio','Yoga'] as NewType[]).map(k => {
           const v = totals.get(k)!
+          const cfg = ACTIVITIES.find(a => a.key === k)!
+          const percentage = maxCount > 0 ? (v.count / maxCount) * 100 : 0
+          const hours = Math.round(v.minutes / 60 * 10) / 10
+          
+          if (v.count === 0) return null
+          
           return (
-            <div key={k} className="flex items-center gap-2">
-              <Icon type={k as any} size="md" />
-              <div className="text-sm"><span className="font-medium mr-2">{k}</span>{v.count}x ? {v.minutes}m</div>
+            <div key={k} className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <Icon type={k as any} size="md" />
+                  <span className="font-medium text-sm">{k}</span>
+                </div>
+                <div className="text-sm text-base-subtext">
+                  {v.count} session{v.count !== 1 ? 's' : ''} • {hours}h
+                </div>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full ${cfg.bg} transition-all duration-500`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
             </div>
           )
         })}
       </div>
+
+      {totalSessions === 0 && (
+        <div className="text-center py-8 text-base-subtext">
+          <div className="text-4xl mb-2">📊</div>
+          <div>No training sessions this month yet.</div>
+          <div className="text-sm">Add your first session to see stats!</div>
+        </div>
+      )}
     </div>
   )
 }
