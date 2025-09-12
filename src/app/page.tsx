@@ -1,74 +1,26 @@
 "use client"
 import Link from 'next/link'
+import { useAuth } from '@/lib/authContext'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 
 export default function Page() {
-  const router = useRouter()
+  const { user } = useAuth()
   const [stats, setStats] = useState<{ climbs: number, highest: number, badges: number, fas: number } | null>(null)
   const [allBadges, setAllBadges] = useState<Array<{ id: string, name: string, icon: string | null, description: string | null }>>([])
-  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
-    console.log('Simple page: Starting...')
-    
-    let mounted = true
-    
-    // Check for existing session immediately
-    const checkSession = async () => {
-      try {
-        const { data } = await supabase.auth.getSession()
-        if (mounted) {
-          if (data?.session?.user) {
-            console.log('Simple page: Found existing session, loading data')
-            setUser(data.session.user)
-            loadData()
-          } else {
-            console.log('Simple page: No existing session, waiting for auth...')
-          }
-        }
-      } catch (e) {
-        console.error('Simple page: Session check error:', e)
-      }
+    if (user) {
+      console.log('Page: User available, loading data')
+      loadData()
     }
-    
-    checkSession()
-    
-    // Simple auth listener for future changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Simple page: Auth change:', event, !!session)
-      if (!mounted) return
-      
-      if (session?.user) {
-        setUser(session.user)
-        console.log('Simple page: User available from auth change, loading data')
-        loadData()
-      } else {
-        setUser(null)
-        console.log('Simple page: No user from auth change, redirecting to login')
-        router.replace('/login')
-      }
-    })
-
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
-  }, [router])
+  }, [user])
 
   const loadData = async () => {
     try {
       console.log('Simple page: Loading data...')
       
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (!sessionData?.session) {
-        console.log('Simple page: No session, waiting for auth context...')
-        return // Don't redirect, let the auth context handle it
-      }
-
-      console.log('Simple page: Session OK, loading stats and badges')
-      setUser(sessionData.session.user)
+      console.log('Simple page: Loading stats and badges')
 
       // Load stats with simple error handling
       try {
@@ -87,9 +39,8 @@ export default function Page() {
         } else {
           console.warn('Simple page: RPC failed:', rpcError?.message)
           // Fallback to basic queries
-          const uid = sessionData.session.user.id
-          const { count: climbs } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)
-          const { count: badges } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)
+          const { count: climbs } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+          const { count: badges } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', user.id)
           setStats({ climbs: climbs ?? 0, highest: 0, badges: badges ?? 0, fas: 0 })
           console.log('Simple page: Fallback stats loaded')
         }
