@@ -203,20 +203,20 @@ export default function SessionsPage() {
         </div>
         
         {/* Activity indicators - positioned at bottom */}
-        <div className="mt-auto flex items-center justify-center">
+        <div className="mt-auto flex items-center justify-center pb-1">
           {hasActivity && (
-            <div className="flex gap-0.5">
+            <div className="flex gap-1">
               {list.slice(0,4).map((s, idx) => {
                 const cfg = ACTIVITIES.find(a => a.key === normalize(s.activity_type))!
                 return (
                   <div 
                     key={s.id + idx} 
-                    className={`w-1.5 h-1.5 rounded-full ${cfg.bg.replace('/20', '/60')}`}
+                    className={`w-2 h-2 rounded-full ${cfg.color.replace('text-', 'bg-').replace('-400', '-500')}`}
                   />
                 )
               })}
               {list.length > 4 && (
-                <div className="w-1.5 h-1.5 rounded-full bg-white/40 ml-0.5" />
+                <div className="w-2 h-2 rounded-full bg-white/60 ml-0.5" />
               )}
             </div>
           )}
@@ -262,7 +262,7 @@ export default function SessionsPage() {
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
             <label className="text-sm block">
               <span className="block mb-1 text-base-subtext">Date</span>
-              <input type="date" className="input w-full min-w-0" value={date} onChange={e => setDate(e.target.value)} />
+              <input type="date" className="input w-full min-w-0 max-w-full overflow-hidden" style={{maxWidth: '100%'}} value={date} onChange={e => setDate(e.target.value)} />
             </label>
             <label className="text-sm block">
               <span className="block mb-1 text-base-subtext">Duration (mins)</span>
