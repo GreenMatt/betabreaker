@@ -8,125 +8,100 @@ export default function Page() {
   const router = useRouter()
   const [stats, setStats] = useState<{ climbs: number, highest: number, badges: number, fas: number } | null>(null)
   const [allBadges, setAllBadges] = useState<Array<{ id: string, name: string, icon: string | null, description: string | null }>>([])
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
-    let unsub: (() => void) | undefined
+    console.log('Simple page: Starting...')
+    loadData()
     
-    // Wait for initial session to be established
-    const initializeData = async () => {
-      console.log('Main page initializing data...')
-      const { data: sessionData } = await supabase.auth.getSession()
-      console.log('Main page session check:', { hasSession: !!sessionData?.session })
-      
-      if (!sessionData?.session?.user) {
-        console.log('No session found, redirecting to login')
-        router.replace('/login')
+    // Simple auth listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Simple page: Auth change:', event, !!session)
+      if (session?.user) {
+        setUser(session.user)
+        if (event === 'SIGNED_IN') {
+          loadData()
+        }
       } else {
-        console.log('Session found, loading data for user:', sessionData.session.user.id)
-        // Load data immediately when we have a session
-        loadStats()
-        loadAllBadges()
-      }
-    }
-    
-    initializeData()
-    
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change in main page:', event, !!session)
-      if (!session?.user) {
+        setUser(null)
         router.replace('/login')
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        console.log('Auth event triggered, loading data')
-        loadStats()
-        loadAllBadges()
       }
     })
-    unsub = () => sub.subscription.unsubscribe()
-    return () => { unsub?.() }
+
+    return () => subscription.unsubscribe()
   }, [router])
 
-  async function loadStats() {
+  const loadData = async () => {
     try {
-      console.log('Loading stats...')
+      console.log('Simple page: Loading data...')
       
-      // Check current session first
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-      console.log('Current session:', { 
-        hasSession: !!sessionData?.session, 
-        sessionError: sessionError?.message,
-        userId: sessionData?.session?.user?.id 
-      })
-      
+      const { data: sessionData } = await supabase.auth.getSession()
       if (!sessionData?.session) {
-        console.warn('No active session when loading stats - clearing data and redirecting')
-        setStats(null)
+        console.log('Simple page: No session, redirecting')
         router.replace('/login')
         return
       }
-      
-      const rpc = await supabase.rpc('get_user_stats')
-      console.log('Stats RPC result:', rpc)
-      if (!rpc.error && rpc.data) {
-        const row = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data
-        if (row) {
-          setStats({ climbs: row.climb_count ?? 0, highest: row.highest_grade ?? 0, badges: row.badge_count ?? 0, fas: row.fa_count ?? 0 })
-          return
+
+      console.log('Simple page: Session OK, loading stats and badges')
+      setUser(sessionData.session.user)
+
+      // Load stats with simple error handling
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_stats')
+        if (!rpcError && rpcData) {
+          const row = Array.isArray(rpcData) ? rpcData[0] : rpcData
+          if (row) {
+            setStats({
+              climbs: row.climb_count ?? 0,
+              highest: row.highest_grade ?? 0,
+              badges: row.badge_count ?? 0,
+              fas: row.fa_count ?? 0
+            })
+            console.log('Simple page: Stats loaded successfully')
+          }
+        } else {
+          console.warn('Simple page: RPC failed:', rpcError?.message)
+          // Fallback to basic queries
+          const uid = sessionData.session.user.id
+          const { count: climbs } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)
+          const { count: badges } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)
+          setStats({ climbs: climbs ?? 0, highest: 0, badges: badges ?? 0, fas: 0 })
+          console.log('Simple page: Fallback stats loaded')
         }
-      } else if (rpc.error) {
-        console.error('Stats loading error:', rpc.error)
+      } catch (e) {
+        console.error('Simple page: Stats error:', e)
+        setStats({ climbs: 0, highest: 0, badges: 0, fas: 0 })
       }
-      
-      // Fallback if RPC not installed yet
-      console.log('Using fallback stats loading...')
-      const { data: u } = await supabase.auth.getUser()
-      const uid = u.user?.id
-      console.log('Fallback user ID:', uid)
-      if (!uid) {
-        console.warn('No user ID available for fallback stats')
-        return
-      }
-      
-      const logs = await supabase.from('climb_logs').select('climb:climbs(grade)').eq('user_id', uid)
-      console.log('Climb logs query result:', { data: logs.data, error: logs.error })
-      
-      if (logs.error) {
-        console.error('Failed to load climb logs, checking session validity...')
-        const { data: currentSession } = await supabase.auth.getSession()
-        if (!currentSession?.session) {
-          console.warn('Session invalid, redirecting to login')
-          router.replace('/login')
-          return
+
+      // Load badges with simple error handling
+      try {
+        const { data: badgesData, error: badgesError } = await supabase.from('badges').select('id,name,icon,description').order('name')
+        if (!badgesError && badgesData) {
+          setAllBadges(badgesData)
+          console.log('Simple page: Badges loaded successfully:', badgesData.length)
+        } else {
+          console.warn('Simple page: Badges failed:', badgesError?.message)
+          setAllBadges([])
         }
+      } catch (e) {
+        console.error('Simple page: Badges error:', e)
+        setAllBadges([])
       }
-      
-      const climbs = logs.data || []
-      const highest = climbs.reduce((m, r: any) => Math.max(m, r.climb?.grade ?? 0), 0)
-      
-      const { count: c1, error: c1Error } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)
-      console.log('Climb logs count:', { count: c1, error: c1Error?.message })
-      
-      const { count: c2, error: c2Error } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)
-      console.log('User badges count:', { count: c2, error: c2Error?.message })
-      
-      if (c1Error || c2Error) {
-        console.error('Database queries failed, checking session validity...')
-        const { data: currentSession } = await supabase.auth.getSession()
-        if (!currentSession?.session) {
-          console.warn('Session invalid, redirecting to login')
-          router.replace('/login')
-          return
-        }
-      }
-      
-      // Fallback has no FA info; set to 0
-      setStats({ climbs: c1 ?? climbs.length, highest, badges: c2 ?? 0, fas: 0 })
-    } catch (error) {
-      console.error('Error in loadStats:', error)
-      setStats(null)
+
+    } catch (e) {
+      console.error('Simple page: Load error:', e)
+      router.replace('/login')
     }
   }
 
-  function resolveIconUrl(icon: string | null): string {
+  const handleRefresh = () => {
+    console.log('Simple page: Manual refresh')
+    setStats(null)
+    setAllBadges([])
+    loadData()
+  }
+
+  const resolveIconUrl = (icon: string | null): string => {
     if (!icon) return '/icons/betabreaker_header.png'
     if (icon.startsWith('http://') || icon.startsWith('https://')) return icon
     if (icon.startsWith('/')) return icon
@@ -134,51 +109,12 @@ export default function Page() {
     return `/icons/${normalized}`
   }
 
-  async function loadAllBadges() {
-    try {
-      console.log('Loading badges...')
-      
-      // Check current session first
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-      console.log('Session for badges:', { 
-        hasSession: !!sessionData?.session, 
-        sessionError: sessionError?.message 
-      })
-      
-      const { data, error } = await supabase.from('badges').select('id,name,icon,description').order('name')
-      console.log('Badges result:', { 
-        data: data ? `${data.length} items` : 'null', 
-        error: error?.message,
-        fullError: error 
-      })
-      
-      if (!error) {
-        setAllBadges(data || [])
-      } else {
-        console.error('Badges loading error:', error)
-        // Check if this is a session issue
-        if (error.message?.includes('JWT') || error.code === 'PGRST301') {
-          console.warn('Session invalid during badges loading, checking session...')
-          const { data: currentSession } = await supabase.auth.getSession()
-          if (!currentSession?.session) {
-            console.warn('Session invalid, redirecting to login')
-            setAllBadges([])
-            router.replace('/login')
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error in loadAllBadges:', error)
-      setAllBadges([])
-    }
-  }
-
-  const handleManualRefresh = async () => {
-    console.log('Manual refresh triggered')
-    setStats(null)
-    setAllBadges([])
-    loadStats()
-    loadAllBadges()
+  if (!user) {
+    return (
+      <div className="min-h-[60vh] grid place-items-center">
+        <div className="text-base-subtext">Loading...</div>
+      </div>
+    )
   }
 
   return (
@@ -189,7 +125,7 @@ export default function Page() {
         <div className="mt-4 flex gap-3">
           <Link className="btn-primary" href="/log">Quick Log</Link>
           <Link className="btn-primary" href="/gym">Browse Gyms</Link>
-          <button className="btn-primary" onClick={handleManualRefresh}>Refresh Data</button>
+          <button className="btn-primary" onClick={handleRefresh}>Refresh Data</button>
         </div>
       </section>
 
@@ -217,7 +153,7 @@ export default function Page() {
 
       <section className="card">
         <h2 className="font-semibold mb-2">Recent Activity</h2>
-        <p className="text-base-subtext">Visit the Feed to see your latest logs and friends’ activity.</p>
+        <p className="text-base-subtext">Visit the Feed to see your latest logs and friends' activity.</p>
         <div className="mt-3">
           <Link className="btn-primary" href="/feed">Open Feed</Link>
         </div>
