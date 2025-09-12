@@ -57,7 +57,9 @@ export default function Page() {
     })
     
     if (!sessionData?.session) {
-      console.warn('No active session when loading stats')
+      console.warn('No active session when loading stats - clearing data and redirecting')
+      setStats(null)
+      router.replace('/login')
       return
     }
     
@@ -86,14 +88,34 @@ export default function Page() {
     const logs = await supabase.from('climb_logs').select('climb:climbs(grade)').eq('user_id', uid)
     console.log('Climb logs query result:', { data: logs.data, error: logs.error })
     
+    if (logs.error) {
+      console.error('Failed to load climb logs, checking session validity...')
+      const { data: currentSession } = await supabase.auth.getSession()
+      if (!currentSession?.session) {
+        console.warn('Session invalid, redirecting to login')
+        router.replace('/login')
+        return
+      }
+    }
+    
     const climbs = logs.data || []
     const highest = climbs.reduce((m, r: any) => Math.max(m, r.climb?.grade ?? 0), 0)
     
-    const { count: c1 } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)
-    console.log('Climb logs count:', { count: c1, error: (await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)).error })
+    const { count: c1, error: c1Error } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)
+    console.log('Climb logs count:', { count: c1, error: c1Error?.message })
     
-    const { count: c2 } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)
-    console.log('User badges count:', { count: c2, error: (await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)).error })
+    const { count: c2, error: c2Error } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)
+    console.log('User badges count:', { count: c2, error: c2Error?.message })
+    
+    if (c1Error || c2Error) {
+      console.error('Database queries failed, checking session validity...')
+      const { data: currentSession } = await supabase.auth.getSession()
+      if (!currentSession?.session) {
+        console.warn('Session invalid, redirecting to login')
+        router.replace('/login')
+        return
+      }
+    }
     
     // Fallback has no FA info; set to 0
     setStats({ climbs: c1 ?? climbs.length, highest, badges: c2 ?? 0, fas: 0 })
@@ -128,7 +150,25 @@ export default function Page() {
       setAllBadges(data || [])
     } else {
       console.error('Badges loading error:', error)
+      // Check if this is a session issue
+      if (error.message?.includes('JWT') || error.code === 'PGRST301') {
+        console.warn('Session invalid during badges loading, checking session...')
+        const { data: currentSession } = await supabase.auth.getSession()
+        if (!currentSession?.session) {
+          console.warn('Session invalid, redirecting to login')
+          setAllBadges([])
+          router.replace('/login')
+        }
+      }
     }
+  }
+
+  const handleManualRefresh = async () => {
+    console.log('Manual refresh triggered')
+    setStats(null)
+    setAllBadges([])
+    loadStats()
+    loadAllBadges()
   }
 
   return (
@@ -139,6 +179,7 @@ export default function Page() {
         <div className="mt-4 flex gap-3">
           <Link className="btn-primary" href="/log">Quick Log</Link>
           <Link className="btn-primary" href="/gym">Browse Gyms</Link>
+          <button className="btn-primary" onClick={handleManualRefresh}>Refresh Data</button>
         </div>
       </section>
 

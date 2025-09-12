@@ -90,18 +90,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (refreshInterval) clearInterval(refreshInterval)
       
       if (session) {
-        // Refresh token every 45 minutes (tokens expire in 1 hour)
+        // Refresh token every 30 minutes (tokens expire in 1 hour)
         refreshInterval = setInterval(async () => {
+          console.log('Attempting session refresh...')
           try {
             const { data, error } = await supabase.auth.refreshSession()
             if (error) {
               console.warn('Session refresh failed:', error.message)
               // Let the auth state change handler deal with the expired session
+            } else if (data?.session) {
+              console.log('Session refreshed successfully for user:', data.session.user.id)
+            } else {
+              console.warn('Session refresh returned no session')
             }
           } catch (e) {
             console.warn('Session refresh error:', e)
           }
-        }, 45 * 60 * 1000) // 45 minutes
+        }, 30 * 60 * 1000) // 30 minutes
+        
+        console.log('Session refresh interval set up for user:', session.user.id)
       }
     }
 
