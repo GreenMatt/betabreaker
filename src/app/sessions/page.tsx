@@ -3,6 +3,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/lib/authContext'
 
+// Helper to get YYYY-MM-DD in local time (no timezone conversion)
+function toLocalYMD(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 type Session = {
   id: string
   date: string
@@ -113,14 +121,14 @@ export default function SessionsPage() {
     ;(async () => {
       setLoading(true)
       try {
-        const start = new Date(viewYear, viewMonth, 1).toISOString()
-        const end = new Date(viewYear, viewMonth + 1, 0, 23, 59, 59).toISOString()
+        const monthStartYMD = toLocalYMD(new Date(viewYear, viewMonth, 1))
+        const monthEndYMD = toLocalYMD(new Date(viewYear, viewMonth + 1, 0))
         const { data, error } = await supabase
           .from('training_sessions')
           .select('id, date, duration_mins, activity_type, notes')
           .eq('user_id', user.id)
-          .gte('date', start)
-          .lte('date', end)
+          .gte('date', monthStartYMD)
+          .lte('date', monthEndYMD)
           .order('date', { ascending: true })
         if (error) throw error
         setItems((data || []) as any)
@@ -133,11 +141,11 @@ export default function SessionsPage() {
   async function addSession() {
     if (!user) return
     const dur = Math.max(0, parseInt(duration || '0', 10))
-    const when = new Date(date)
+    // Insert plain YYYY-MM-DD string (no timezone conversion)
     try {
       const { data, error } = await supabase
         .from('training_sessions')
-        .insert({ user_id: user.id, date: when.toISOString(), duration_mins: dur, activity_type: activity, notes })
+        .insert({ user_id: user.id, date: date, duration_mins: dur, activity_type: activity, notes })
         .select('id, date, duration_mins, activity_type, notes')
         .single()
       if (error) throw error
@@ -170,9 +178,9 @@ export default function SessionsPage() {
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const keyDate = new Date(viewYear, viewMonth, d)
-    const key = keyDate.toISOString().slice(0,10)
+    const key = toLocalYMD(keyDate)
     const list = grouped.get(key) || []
-    const isToday = key === new Date().toISOString().slice(0,10)
+    const isToday = key === toLocalYMD(new Date())
     const hasActivity = list.length > 0
     
     dayCells.push(
@@ -239,34 +247,7 @@ export default function SessionsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Training Log</h1>
-      <div className="card">
-        <div className="mb-4 flex items-center justify-between">
-          <button 
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm transition-colors" 
-            onClick={prevMonth}
-          >
-            <span className="text-lg">←</span> Prev
-          </button>
-          <h2 className="text-lg font-semibold text-center">
-            {new Date(viewYear, viewMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
-          </h2>
-          <button 
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm transition-colors" 
-            onClick={nextMonth}
-          >
-            Next <span className="text-lg">→</span>
-          </button>
-        </div>
-        <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-base-subtext mb-3">
-          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-            <div key={d} className="py-2">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-2">
-          {dayCells}
-        </div>
-      </div>
-
+      
       <div className="card">
         <h2 className="font-semibold mb-3">Add Session</h2>
         <div className="space-y-3">
@@ -321,6 +302,34 @@ export default function SessionsPage() {
       </div>
 
       <div className="card">
+        <div className="mb-4 flex items-center justify-between">
+          <button 
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm transition-colors" 
+            onClick={prevMonth}
+          >
+            <span className="text-lg">←</span> Prev
+          </button>
+          <h2 className="text-lg font-semibold text-center">
+            {new Date(viewYear, viewMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+          </h2>
+          <button 
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm transition-colors" 
+            onClick={nextMonth}
+          >
+            Next <span className="text-lg">→</span>
+          </button>
+        </div>
+        <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-base-subtext mb-3">
+          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+            <div key={d} className="py-2">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-2">
+          {dayCells}
+        </div>
+      </div>
+
+      <div className="card">
         <h2 className="font-semibold mb-3 text-gray-800">This Month</h2>
         {items.length === 0 && (
           <div className="text-center py-6 text-base-subtext">
@@ -334,7 +343,7 @@ export default function SessionsPage() {
               const activityType = normalize(s.activity_type)
               const cfg = ACTIVITIES.find(a => a.key === activityType)!
               const sessionDate = new Date(s.date)
-              const isToday = s.date.slice(0,10) === new Date().toISOString().slice(0,10)
+              const isToday = s.date.slice(0,10) === toLocalYMD(new Date())
               
               return (
                 <div key={s.id} className={`
@@ -369,7 +378,7 @@ export default function SessionsPage() {
                         <button className="px-3 py-1 bg-neon-purple hover:bg-neon-purple/80 rounded text-xs font-medium transition-colors" onClick={async () => {
                           try {
                             const payload: any = {
-                              date: new Date(((editDraft.date as string) || s.date)).toISOString(),
+                              date: (editDraft.date as string) || s.date.slice(0, 10),
                               activity_type: (editDraft.activity_type as Session['activity_type']) || s.activity_type,
                               duration_mins: (typeof editDraft.duration_mins === 'number' ? editDraft.duration_mins : s.duration_mins) || 0,
                               notes: (editDraft.notes as string) ?? s.notes
