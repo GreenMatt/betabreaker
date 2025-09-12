@@ -20,9 +20,12 @@ export default function Page() {
     }
   }, [user, user?.id])
 
-  const loadData = async () => {
+  const loadData = async (retryCount = 0) => {
+    const maxRetries = 3
+    const baseDelay = 1000 // 1 second
+    
     try {
-      console.log('Simple page: Loading data...')
+      console.log(`Simple page: Loading data... (attempt ${retryCount + 1}/${maxRetries + 1})`)
       
       // First validate session before trying to load data
       console.log('Simple page: Validating session...')
@@ -96,7 +99,16 @@ export default function Page() {
       }
       
       if (!sessionData?.session) {
-        console.error('Simple page: No valid session available! Trying to refresh...')
+        console.error('Simple page: No valid session available!')
+        
+        // If this is a retry due to timing issues, don't give up immediately
+        if (retryCount < maxRetries) {
+          console.log('Simple page: Session not ready, will retry...')
+          throw new Error('Session not ready - will retry')
+        }
+        
+        // Only try refresh session on the final attempt
+        console.log('Simple page: Final attempt - trying to refresh session...')
         try {
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
           console.log('Simple page: Refresh session result:', { 
@@ -106,17 +118,13 @@ export default function Page() {
           
           if (!refreshData?.session) {
             console.error('Simple page: Session refresh failed, giving up')
-            setStats({ climbs: 0, highest: 0, badges: 0, fas: 0 })
-            setAllBadges([])
-            return
+            throw new Error('Session refresh failed')
           }
           
           console.log('Simple page: Session refreshed successfully')
         } catch (e: any) {
           console.error('Simple page: Session refresh exception:', e.message)
-          setStats({ climbs: 0, highest: 0, badges: 0, fas: 0 })
-          setAllBadges([])
-          return
+          throw new Error('Session refresh failed')
         }
       }
       
@@ -188,7 +196,21 @@ export default function Page() {
 
     } catch (e) {
       console.error('Simple page: Load error:', e)
-      // Don't redirect on error, just log it
+      
+      // Retry logic for timing/race conditions
+      if (retryCount < maxRetries) {
+        const delay = baseDelay * Math.pow(2, retryCount) // Exponential backoff: 1s, 2s, 4s
+        console.log(`Simple page: Retrying in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`)
+        
+        setTimeout(() => {
+          loadData(retryCount + 1)
+        }, delay)
+      } else {
+        console.error('Simple page: Max retries reached, giving up')
+        // Set empty data as fallback
+        setStats({ climbs: 0, highest: 0, badges: 0, fas: 0 })
+        setAllBadges([])
+      }
     }
   }
 
