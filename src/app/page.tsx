@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useAuth } from '@/lib/authContext'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, supabaseSession } from '@/lib/supabaseClient'
 
 export default function Page() {
   const { user } = useAuth()
@@ -29,10 +29,10 @@ export default function Page() {
       let sessionData, sessionError
       
       try {
-        // Add timeout to session check to prevent hanging
-        const sessionPromise = supabase.auth.getSession()
+        // Use lightweight session client to prevent hanging
+        const sessionPromise = supabaseSession.auth.getSession()
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 5000)
+          setTimeout(() => reject(new Error('Session check timeout')), 3000)
         )
         
         const result = await Promise.race([sessionPromise, timeoutPromise]) as any
@@ -47,8 +47,40 @@ export default function Page() {
         })
       } catch (e: any) {
         console.error('Simple page: Session check failed/timeout:', e.message)
-        sessionData = { session: null }
-        sessionError = { message: e.message }
+        
+        // Fallback: try to read session from localStorage directly
+        console.log('Simple page: Trying localStorage fallback...')
+        try {
+          if (typeof window !== 'undefined') {
+            const storedSession = window.localStorage.getItem('supabase.auth.token')
+            console.log('Simple page: localStorage session:', !!storedSession)
+            if (storedSession) {
+              const parsed = JSON.parse(storedSession)
+              console.log('Simple page: Parsed session:', { 
+                hasAccessToken: !!parsed?.access_token,
+                expiresAt: parsed?.expires_at ? new Date(parsed.expires_at * 1000).toLocaleString() : 'N/A'
+              })
+              
+              // If we have a stored session that's not expired, use it
+              if (parsed?.access_token && parsed?.expires_at && parsed.expires_at > Date.now() / 1000) {
+                console.log('Simple page: Using valid localStorage session')
+                sessionData = { session: parsed }
+                sessionError = null
+              } else {
+                console.log('Simple page: localStorage session expired or invalid')
+                sessionData = { session: null }
+                sessionError = { message: 'Session expired' }
+              }
+            } else {
+              sessionData = { session: null }
+              sessionError = { message: 'No stored session' }
+            }
+          }
+        } catch (localStorageError: any) {
+          console.error('Simple page: localStorage fallback failed:', localStorageError.message)
+          sessionData = { session: null }
+          sessionError = { message: e.message }
+        }
       }
       
       if (!sessionData?.session) {

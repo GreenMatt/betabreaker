@@ -17,6 +17,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     headers: {
       'x-client-info': 'betabreaker'
     }
+  },
+  // Add network timeout to prevent hanging
+  realtime: {
+    timeout: 5000
+  }
+})
+
+// Create a separate client for session-critical operations with shorter timeout
+export const supabaseSession = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    storageKey: 'supabase.auth.token'
+  },
+  global: {
+    headers: {
+      'x-client-info': 'betabreaker-session'
+    }
   }
 })
 
