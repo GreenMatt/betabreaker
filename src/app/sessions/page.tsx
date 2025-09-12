@@ -271,20 +271,24 @@ export default function SessionsPage() {
         <h2 className="font-semibold mb-3">Add Session</h2>
         <div className="space-y-3">
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <div className="min-w-0">
+            <div className="overflow-hidden">
               <label className="text-sm block">
                 <span className="block mb-1 text-base-subtext">Date</span>
-                <input 
-                  type="date" 
-                  className="input w-full text-sm box-border"
-                  style={{ 
-                    maxWidth: '100%', 
-                    width: '100%',
-                    minWidth: '0'
-                  }}
-                  value={date} 
-                  onChange={e => setDate(e.target.value)} 
-                />
+                <div className="overflow-hidden rounded-md border border-white/20">
+                  <input 
+                    type="date" 
+                    className="w-full text-sm bg-transparent px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-neon-purple/50"
+                    style={{ 
+                      border: 'none',
+                      outline: 'none',
+                      minWidth: '0',
+                      width: 'calc(100% + 20px)',
+                      marginRight: '-20px'
+                    }}
+                    value={date} 
+                    onChange={e => setDate(e.target.value)} 
+                  />
+                </div>
               </label>
             </div>
             <label className="text-sm block">
