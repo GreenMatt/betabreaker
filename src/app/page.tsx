@@ -24,7 +24,42 @@ export default function Page() {
     try {
       console.log('Simple page: Loading data...')
       
-      console.log('Simple page: Loading stats and badges')
+      // First validate session before trying to load data
+      console.log('Simple page: Validating session...')
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      console.log('Simple page: Session check:', { 
+        hasSession: !!sessionData?.session, 
+        sessionError: sessionError?.message,
+        userId: sessionData?.session?.user?.id,
+        expiresAt: sessionData?.session?.expires_at ? new Date(sessionData.session.expires_at * 1000).toLocaleString() : 'N/A'
+      })
+      
+      if (!sessionData?.session) {
+        console.error('Simple page: No valid session available! Trying to refresh...')
+        try {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+          console.log('Simple page: Refresh session result:', { 
+            hasSession: !!refreshData?.session, 
+            error: refreshError?.message 
+          })
+          
+          if (!refreshData?.session) {
+            console.error('Simple page: Session refresh failed, giving up')
+            setStats({ climbs: 0, highest: 0, badges: 0, fas: 0 })
+            setAllBadges([])
+            return
+          }
+          
+          console.log('Simple page: Session refreshed successfully')
+        } catch (e: any) {
+          console.error('Simple page: Session refresh exception:', e.message)
+          setStats({ climbs: 0, highest: 0, badges: 0, fas: 0 })
+          setAllBadges([])
+          return
+        }
+      }
+      
+      console.log('Simple page: Session valid, loading stats and badges')
 
       // Load stats with detailed error handling
       try {
