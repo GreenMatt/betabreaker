@@ -164,8 +164,10 @@ export default function Stabilizer() {
         if (typeof window === 'undefined') return
         if (sessionStorage.getItem('bb_recovered') === '1') return
         const txt = (document.body?.innerText || '').toLowerCase()
-        const looksStuck = txt.includes('loading') && !txt.includes('login')
+        // Only trigger if genuinely stuck on loading AND not successfully signed in
+        const looksStuck = txt.includes('loading') && !txt.includes('login') && !txt.includes('signed in') && !txt.includes('welcome back')
         if (looksStuck) {
+          console.log('[Stabilizer] App appears stuck, clearing session')
           clearSupabaseLocal()
           sessionStorage.setItem('bb_recovered', '1')
           window.location.reload()
@@ -185,7 +187,8 @@ export default function Stabilizer() {
         logClientError({ message, stack }).catch(() => {})
       }
       errCount++
-      if (errCount >= 3 && sessionStorage.getItem('bb_recovered') !== '1') {
+      if (errCount >= 5 && sessionStorage.getItem('bb_recovered') !== '1') {
+        console.log('[Stabilizer] Multiple errors detected, clearing session')
         clearSupabaseLocal()
         sessionStorage.setItem('bb_recovered', '1')
         window.location.reload()
