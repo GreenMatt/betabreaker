@@ -207,11 +207,22 @@ export default function SessionsPage() {
           {hasActivity && (
             <div className="flex gap-1">
               {list.slice(0,4).map((s, idx) => {
-                const cfg = ACTIVITIES.find(a => a.key === normalize(s.activity_type))!
+                const activityType = normalize(s.activity_type)
+                let dotColor = 'bg-gray-400'
+                
+                switch(activityType) {
+                  case 'Climb': dotColor = 'bg-sky-500'; break;
+                  case 'Board': dotColor = 'bg-amber-500'; break;
+                  case 'Hang': dotColor = 'bg-violet-500'; break;
+                  case 'Strength': dotColor = 'bg-red-500'; break;
+                  case 'Cardio': dotColor = 'bg-rose-500'; break;
+                  case 'Yoga': dotColor = 'bg-emerald-500'; break;
+                }
+                
                 return (
                   <div 
                     key={s.id + idx} 
-                    className={`w-2 h-2 rounded-full ${cfg.color.replace('text-', 'bg-').replace('-400', '-500')}`}
+                    className={`w-2 h-2 rounded-full ${dotColor}`}
                   />
                 )
               })}
@@ -260,10 +271,12 @@ export default function SessionsPage() {
         <h2 className="font-semibold mb-3">Add Session</h2>
         <div className="space-y-3">
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <label className="text-sm block">
-              <span className="block mb-1 text-base-subtext">Date</span>
-              <input type="date" className="input w-full min-w-0 max-w-full overflow-hidden" style={{maxWidth: '100%'}} value={date} onChange={e => setDate(e.target.value)} />
-            </label>
+            <div className="min-w-0">
+              <label className="text-sm block">
+                <span className="block mb-1 text-base-subtext">Date</span>
+                <input type="date" className="input w-full text-sm" value={date} onChange={e => setDate(e.target.value)} />
+              </label>
+            </div>
             <label className="text-sm block">
               <span className="block mb-1 text-base-subtext">Duration (mins)</span>
               <input type="number" min={0} className="input w-full min-w-0" value={duration} onChange={e => setDuration(e.target.value)} />
