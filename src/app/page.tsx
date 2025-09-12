@@ -37,9 +37,8 @@ export default function Page() {
       
       const { data: sessionData } = await supabase.auth.getSession()
       if (!sessionData?.session) {
-        console.log('Simple page: No session, redirecting')
-        router.replace('/login')
-        return
+        console.log('Simple page: No session, waiting for auth context...')
+        return // Don't redirect, let the auth context handle it
       }
 
       console.log('Simple page: Session OK, loading stats and badges')
@@ -90,7 +89,7 @@ export default function Page() {
 
     } catch (e) {
       console.error('Simple page: Load error:', e)
-      router.replace('/login')
+      // Don't redirect on error, just log it
     }
   }
 
