@@ -12,19 +12,29 @@ export default function Page() {
 
   useEffect(() => {
     console.log('Simple page: Starting...')
-    loadData()
+    
+    // Don't load data immediately, wait for auth state
     
     // Simple auth listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Simple page: Auth change:', event, !!session)
       if (session?.user) {
         setUser(session.user)
-        if (event === 'SIGNED_IN') {
-          loadData()
-        }
+        console.log('Simple page: User available, loading data')
+        loadData()
       } else {
         setUser(null)
+        console.log('Simple page: No user, redirecting to login')
         router.replace('/login')
+      }
+    })
+
+    // Also check initial session
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session?.user) {
+        setUser(data.session.user)
+        console.log('Simple page: Initial user found, loading data')
+        loadData()
       }
     })
 
