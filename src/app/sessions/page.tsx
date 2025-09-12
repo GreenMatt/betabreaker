@@ -274,21 +274,16 @@ export default function SessionsPage() {
             <div className="min-w-0">
               <label className="text-sm block">
                 <span className="block mb-1 text-base-subtext">Date</span>
-                <div className="relative rounded-md border border-white/20 focus-within:ring-2 focus-within:ring-neon-purple/50 focus-within:border-neon-purple/50">
+                <div className="relative rounded-md border border-gray-300 focus-within:ring-2 focus-within:ring-neon-purple/50 focus-within:border-neon-purple/50">
                   <input 
                     type="date" 
-                    className="w-full min-w-0 text-base sm:text-sm bg-transparent px-3 py-2 pr-9 text-white focus:outline-none"
+                    className="w-full min-w-0 text-base sm:text-sm bg-transparent px-3 py-2 text-gray-800 focus:outline-none"
                     style={{ 
-                      colorScheme: 'dark'
+                      colorScheme: 'light'
                     }}
                     value={date} 
                     onChange={e => setDate(e.target.value)} 
                   />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-base-subtext" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
                 </div>
               </label>
             </div>
@@ -352,21 +347,16 @@ export default function SessionsPage() {
                   {editingId === s.id ? (
                     <div className="space-y-3">
                       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                        <div className="relative rounded-md border border-white/20 focus-within:ring-2 focus-within:ring-neon-purple/50 focus-within:border-neon-purple/50">
+                        <div className="relative rounded-md border border-gray-300 focus-within:ring-2 focus-within:ring-neon-purple/50 focus-within:border-neon-purple/50">
                           <input 
                             type="date" 
-                            className="w-full min-w-0 text-base sm:text-sm bg-transparent px-3 py-2 pr-9 text-white focus:outline-none"
+                            className="w-full min-w-0 text-base sm:text-sm bg-transparent px-3 py-2 text-gray-800 focus:outline-none"
                             style={{ 
-                              colorScheme: 'dark'
+                              colorScheme: 'light'
                             }}
                             value={(editDraft.date as string) || s.date.slice(0,10)} 
                             onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} 
                           />
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <svg className="w-4 h-4 text-base-subtext" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
                         </div>
                         <select className="input text-sm" value={(editDraft.activity_type as Session['activity_type']) || s.activity_type} onChange={e => setEditDraft(d => ({ ...d, activity_type: e.target.value as any }))}>
                           {ACTIVITIES.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
