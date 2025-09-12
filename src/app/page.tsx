@@ -13,32 +13,48 @@ export default function Page() {
   useEffect(() => {
     console.log('Simple page: Starting...')
     
-    // Don't load data immediately, wait for auth state
+    let mounted = true
     
-    // Simple auth listener
+    // Check for existing session immediately
+    const checkSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (mounted) {
+          if (data?.session?.user) {
+            console.log('Simple page: Found existing session, loading data')
+            setUser(data.session.user)
+            loadData()
+          } else {
+            console.log('Simple page: No existing session, waiting for auth...')
+          }
+        }
+      } catch (e) {
+        console.error('Simple page: Session check error:', e)
+      }
+    }
+    
+    checkSession()
+    
+    // Simple auth listener for future changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Simple page: Auth change:', event, !!session)
+      if (!mounted) return
+      
       if (session?.user) {
         setUser(session.user)
-        console.log('Simple page: User available, loading data')
+        console.log('Simple page: User available from auth change, loading data')
         loadData()
       } else {
         setUser(null)
-        console.log('Simple page: No user, redirecting to login')
+        console.log('Simple page: No user from auth change, redirecting to login')
         router.replace('/login')
       }
     })
 
-    // Also check initial session
-    supabase.auth.getSession().then(({ data }) => {
-      if (data?.session?.user) {
-        setUser(data.session.user)
-        console.log('Simple page: Initial user found, loading data')
-        loadData()
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [router])
 
   const loadData = async () => {
