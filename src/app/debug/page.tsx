@@ -246,7 +246,8 @@ export default function DebugPage() {
       <h1 className="text-2xl font-bold mb-2">Database Debug & Connectivity Test</h1>
       <div className="mb-4 text-sm text-gray-600">
         <p><strong>Version:</strong> v0.1.0-debug</p>
-        <p><strong>Last Updated:</strong> {new Date('2025-09-12T20:00:00').toLocaleString()}</p>
+        <p><strong>Git Commit:</strong> d55061d</p>
+        <p><strong>Last Updated:</strong> {new Date('2025-09-12T20:15:00').toLocaleString()}</p>
         <p><strong>Page Load:</strong> {new Date().toLocaleString()}</p>
         <p><strong>Environment:</strong> {process.env.NODE_ENV}</p>
       </div>

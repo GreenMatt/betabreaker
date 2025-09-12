@@ -26,13 +26,30 @@ export default function Page() {
       
       // First validate session before trying to load data
       console.log('Simple page: Validating session...')
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-      console.log('Simple page: Session check:', { 
-        hasSession: !!sessionData?.session, 
-        sessionError: sessionError?.message,
-        userId: sessionData?.session?.user?.id,
-        expiresAt: sessionData?.session?.expires_at ? new Date(sessionData.session.expires_at * 1000).toLocaleString() : 'N/A'
-      })
+      let sessionData, sessionError
+      
+      try {
+        // Add timeout to session check to prevent hanging
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 5000)
+        )
+        
+        const result = await Promise.race([sessionPromise, timeoutPromise]) as any
+        sessionData = result.data
+        sessionError = result.error
+        
+        console.log('Simple page: Session check completed:', { 
+          hasSession: !!sessionData?.session, 
+          sessionError: sessionError?.message,
+          userId: sessionData?.session?.user?.id,
+          expiresAt: sessionData?.session?.expires_at ? new Date(sessionData.session.expires_at * 1000).toLocaleString() : 'N/A'
+        })
+      } catch (e: any) {
+        console.error('Simple page: Session check failed/timeout:', e.message)
+        sessionData = { session: null }
+        sessionError = { message: e.message }
+      }
       
       if (!sessionData?.session) {
         console.error('Simple page: No valid session available! Trying to refresh...')
