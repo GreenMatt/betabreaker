@@ -319,16 +319,15 @@ export default function SessionsPage() {
       </div>
 
       <div className="card">
-        <h2 className="font-semibold mb-4">This Month's Sessions</h2>
+        <h2 className="font-semibold mb-3 text-gray-200">This Month</h2>
         {items.length === 0 && (
-          <div className="text-center py-8 text-base-subtext">
-            <div className="text-4xl mb-2">📅</div>
-            <div>No training sessions this month yet.</div>
-            <div className="text-sm">Add your first session above!</div>
+          <div className="text-center py-6 text-base-subtext">
+            <div className="text-3xl mb-2">📅</div>
+            <div className="text-sm">No sessions yet this month</div>
           </div>
         )}
         {items.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {items.map(s => {
               const activityType = normalize(s.activity_type)
               const cfg = ACTIVITIES.find(a => a.key === activityType)!
@@ -337,37 +336,25 @@ export default function SessionsPage() {
               
               return (
                 <div key={s.id} className={`
-                  group relative rounded-xl border transition-all duration-200
+                  group relative rounded-lg border transition-all duration-200 p-3
                   ${isToday 
-                    ? 'border-neon-purple/30 bg-gradient-to-r from-neon-purple/5 to-transparent' 
-                    : 'border-white/10 bg-gradient-to-r from-white/5 to-transparent hover:border-white/20'
+                    ? 'border-neon-purple/30 bg-neon-purple/5' 
+                    : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
                   }
                 `}>
                   {editingId === s.id ? (
-                    <div className="p-4">
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <div>
-                          <label className="text-xs text-base-subtext block mb-1">Date</label>
-                          <input type="date" className="input text-sm" value={(editDraft.date as string) || s.date.slice(0,10)} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} />
-                        </div>
-                        <div>
-                          <label className="text-xs text-base-subtext block mb-1">Activity</label>
-                          <select className="input text-sm" value={(editDraft.activity_type as Session['activity_type']) || s.activity_type} onChange={e => setEditDraft(d => ({ ...d, activity_type: e.target.value as any }))}>
-                            {ACTIVITIES.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-xs text-base-subtext block mb-1">Duration</label>
-                          <input type="number" min={0} className="input text-sm" value={String((editDraft.duration_mins ?? s.duration_mins) ?? 0)} onChange={e => setEditDraft(d => ({ ...d, duration_mins: parseInt(e.target.value || '0', 10) }))} />
-                        </div>
-                        <div>
-                          <label className="text-xs text-base-subtext block mb-1">Notes</label>
-                          <input className="input text-sm" placeholder="Optional" value={(editDraft.notes as string) ?? (s.notes || '')} onChange={e => setEditDraft(d => ({ ...d, notes: e.target.value }))} />
-                        </div>
+                    <div className="space-y-3">
+                      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                        <input type="date" className="input text-sm" value={(editDraft.date as string) || s.date.slice(0,10)} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} />
+                        <select className="input text-sm" value={(editDraft.activity_type as Session['activity_type']) || s.activity_type} onChange={e => setEditDraft(d => ({ ...d, activity_type: e.target.value as any }))}>
+                          {ACTIVITIES.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
+                        </select>
+                        <input type="number" min={0} placeholder="Duration (mins)" className="input text-sm" value={String((editDraft.duration_mins ?? s.duration_mins) ?? 0)} onChange={e => setEditDraft(d => ({ ...d, duration_mins: parseInt(e.target.value || '0', 10) }))} />
+                        <input className="input text-sm" placeholder="Notes" value={(editDraft.notes as string) ?? (s.notes || '')} onChange={e => setEditDraft(d => ({ ...d, notes: e.target.value }))} />
                       </div>
-                      <div className="flex items-center justify-end gap-2 mt-4">
-                        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors" onClick={() => { setEditingId(null); setEditDraft({}) }}>Cancel</button>
-                        <button className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 rounded-lg text-sm font-medium transition-colors" onClick={async () => {
+                      <div className="flex items-center justify-end gap-2">
+                        <button className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors" onClick={() => { setEditingId(null); setEditDraft({}) }}>Cancel</button>
+                        <button className="px-3 py-1 bg-neon-purple hover:bg-neon-purple/80 rounded text-xs font-medium transition-colors" onClick={async () => {
                           try {
                             const payload: any = {
                               date: new Date(((editDraft.date as string) || s.date)).toISOString(),
@@ -388,77 +375,64 @@ export default function SessionsPage() {
                           } catch (e: any) {
                             alert(e?.message || 'Failed to save')
                           }
-                        }}>Save Changes</button>
+                        }}>Save</button>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4">
-                      <div className="flex items-start gap-4">
-                        {/* Activity Icon with gradient background */}
-                        <div className={`flex-shrink-0 relative overflow-hidden rounded-xl p-3 ${cfg.bg} border border-white/10`}>
-                          <Icon type={activityType} size="lg" />
-                          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-                        </div>
-                        
-                        {/* Session Details */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h3 className="font-medium text-white flex items-center gap-2">
-                                {activityType}
-                                {isToday && (
-                                  <span className="text-xs px-2 py-1 rounded-full bg-neon-purple/20 text-neon-purple border border-neon-purple/30">
-                                    Today
-                                  </span>
-                                )}
-                              </h3>
-                              <div className="text-sm text-base-subtext">
-                                {sessionDate.toLocaleDateString('en-US', { 
-                                  weekday: 'short', 
-                                  month: 'short', 
-                                  day: 'numeric' 
-                                })} • {s.duration_mins || 0} minutes
-                              </div>
-                            </div>
-                            
-                            {/* Action buttons */}
-                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button 
-                                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-                                onClick={() => { setEditingId(s.id); setEditDraft({}) }}
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                              <button 
-                                className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
-                                onClick={async () => {
-                                  if (!confirm('Delete this session?')) return
-                                  const { error } = await supabase.from('training_sessions').delete().eq('id', s.id)
-                                  if (error) { alert(error.message); return }
-                                  setItems(prev => prev.filter(x => x.id !== s.id))
-                                }}
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {s.notes && (
-                            <div className="mt-2 p-3 rounded-lg bg-white/5 border-l-2 border-neon-purple/30">
-                              <p className="text-sm text-gray-300 italic">"{s.notes}"</p>
-                            </div>
+                    <div className="flex items-center gap-3">
+                      {/* Compact activity icon */}
+                      <div className={`flex-shrink-0 rounded-lg p-2 ${cfg.bg}`}>
+                        <Icon type={activityType} size="md" />
+                      </div>
+                      
+                      {/* Session info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-gray-200 text-sm">{activityType}</span>
+                          {isToday && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-neon-purple/20 text-neon-purple">
+                              Today
+                            </span>
                           )}
                         </div>
+                        <div className="text-xs text-base-subtext">
+                          {sessionDate.toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })} • {s.duration_mins || 0} minutes
+                        </div>
+                        {s.notes && (
+                          <div className="text-xs text-gray-400 italic mt-1">"{s.notes}"</div>
+                        )}
+                      </div>
+                      
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          className="p-1.5 rounded bg-white/10 hover:bg-white/20 transition-colors"
+                          onClick={() => { setEditingId(s.id); setEditDraft({}) }}
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button 
+                          className="p-1.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+                          onClick={async () => {
+                            if (!confirm('Delete this session?')) return
+                            const { error } = await supabase.from('training_sessions').delete().eq('id', s.id)
+                            if (error) { alert(error.message); return }
+                            setItems(prev => prev.filter(x => x.id !== s.id))
+                          }}
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   )}
-                  
-                  {/* Hover effect overlay */}
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                 </div>
               )
             })}
