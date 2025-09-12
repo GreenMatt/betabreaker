@@ -136,7 +136,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (event === 'SIGNED_IN' && newSession?.user) {
         try { 
-          await ensureProfile(newSession.user) 
+          await ensureProfile(newSession.user)
+          console.log('Profile ensured for user:', newSession.user.id)
         } catch (e) { 
           console.error('Profile creation failed:', e)
         }

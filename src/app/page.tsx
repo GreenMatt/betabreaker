@@ -11,13 +11,34 @@ export default function Page() {
 
   useEffect(() => {
     let unsub: (() => void) | undefined
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) router.replace('/login')
-      else { loadStats(); loadAllBadges() }
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!session?.user) router.replace('/login')
-      else { loadStats(); loadAllBadges() }
+    
+    // Wait for initial session to be established
+    const initializeData = async () => {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData?.session?.user) {
+        router.replace('/login')
+      } else {
+        // Add small delay to ensure session is fully established
+        setTimeout(() => {
+          loadStats()
+          loadAllBadges()
+        }, 100)
+      }
+    }
+    
+    initializeData()
+    
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change in main page:', event, !!session)
+      if (!session?.user) {
+        router.replace('/login')
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Add small delay to ensure session is fully established
+        setTimeout(() => {
+          loadStats()
+          loadAllBadges()
+        }, 100)
+      }
     })
     unsub = () => sub.subscription.unsubscribe()
     return () => { unsub?.() }
@@ -25,6 +46,20 @@ export default function Page() {
 
   async function loadStats() {
     console.log('Loading stats...')
+    
+    // Check current session first
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    console.log('Current session:', { 
+      hasSession: !!sessionData?.session, 
+      sessionError: sessionError?.message,
+      userId: sessionData?.session?.user?.id 
+    })
+    
+    if (!sessionData?.session) {
+      console.warn('No active session when loading stats')
+      return
+    }
+    
     const rpc = await supabase.rpc('get_user_stats')
     console.log('Stats RPC result:', rpc)
     if (!rpc.error && rpc.data) {
@@ -36,15 +71,29 @@ export default function Page() {
     } else if (rpc.error) {
       console.error('Stats loading error:', rpc.error)
     }
+    
     // Fallback if RPC not installed yet
+    console.log('Using fallback stats loading...')
     const { data: u } = await supabase.auth.getUser()
     const uid = u.user?.id
-    if (!uid) return
+    console.log('Fallback user ID:', uid)
+    if (!uid) {
+      console.warn('No user ID available for fallback stats')
+      return
+    }
+    
     const logs = await supabase.from('climb_logs').select('climb:climbs(grade)').eq('user_id', uid)
+    console.log('Climb logs query result:', { data: logs.data, error: logs.error })
+    
     const climbs = logs.data || []
     const highest = climbs.reduce((m, r: any) => Math.max(m, r.climb?.grade ?? 0), 0)
+    
     const { count: c1 } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)
+    console.log('Climb logs count:', { count: c1, error: (await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', uid)).error })
+    
     const { count: c2 } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)
+    console.log('User badges count:', { count: c2, error: (await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)).error })
+    
     // Fallback has no FA info; set to 0
     setStats({ climbs: c1 ?? climbs.length, highest, badges: c2 ?? 0, fas: 0 })
   }
@@ -59,10 +108,26 @@ export default function Page() {
 
   async function loadAllBadges() {
     console.log('Loading badges...')
+    
+    // Check current session first
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    console.log('Session for badges:', { 
+      hasSession: !!sessionData?.session, 
+      sessionError: sessionError?.message 
+    })
+    
     const { data, error } = await supabase.from('badges').select('id,name,icon,description').order('name')
-    console.log('Badges result:', { data, error })
-    if (!error) setAllBadges(data || [])
-    else console.error('Badges loading error:', error)
+    console.log('Badges result:', { 
+      data: data ? `${data.length} items` : 'null', 
+      error: error?.message,
+      fullError: error 
+    })
+    
+    if (!error) {
+      setAllBadges(data || [])
+    } else {
+      console.error('Badges loading error:', error)
+    }
   }
 
   return (

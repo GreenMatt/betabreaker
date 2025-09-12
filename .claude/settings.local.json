@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx supabase:*)",
-      "Bash(docker:*)"
+      "Bash(docker:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
