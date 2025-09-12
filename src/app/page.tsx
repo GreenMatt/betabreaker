@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useAuth } from '@/lib/authContext'
 import { useEffect, useState } from 'react'
-import { supabase, supabaseSession } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabaseClient'
 
 export default function Page() {
   const { user } = useAuth()
@@ -29,8 +29,8 @@ export default function Page() {
       let sessionData, sessionError
       
       try {
-        // Use lightweight session client to prevent hanging
-        const sessionPromise = supabaseSession.auth.getSession()
+        // Use main client with timeout to prevent hanging
+        const sessionPromise = supabase.auth.getSession()
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Session check timeout')), 3000)
         )

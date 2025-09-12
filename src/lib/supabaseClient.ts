@@ -24,19 +24,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Create a separate client for session-critical operations with shorter timeout
-export const supabaseSession = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    storageKey: 'supabase.auth.token'
-  },
-  global: {
-    headers: {
-      'x-client-info': 'betabreaker-session'
-    }
-  }
-})
+// Remove the separate client - it's causing conflicts
+// Just use the main client for everything
 
