@@ -257,25 +257,33 @@ export default function SessionsPage() {
       </div>
 
       <div className="card">
-        <h2 className="font-semibold mb-2">Add Session</h2>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="text-sm">Date
-            <input type="date" className="input w-full" value={date} onChange={e => setDate(e.target.value)} />
-          </label>
-          <label className="text-sm">Duration (mins)
-            <input type="number" min={0} className="input w-full" value={duration} onChange={e => setDuration(e.target.value)} />
-          </label>
-          <label className="text-sm">Activity
-            <select className="input w-full" value={activity} onChange={e => setActivity(e.target.value as any)}>
-              {ACTIVITIES.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
-            </select>
-          </label>
-          <label className="text-sm">Notes
-            <input className="input w-full" placeholder="Optional notes" value={notes} onChange={e => setNotes(e.target.value)} />
-          </label>
+        <h2 className="font-semibold mb-3">Add Session</h2>
+        <div className="space-y-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <label className="text-sm block">
+              <span className="block mb-1 text-base-subtext">Date</span>
+              <input type="date" className="input w-full min-w-0" value={date} onChange={e => setDate(e.target.value)} />
+            </label>
+            <label className="text-sm block">
+              <span className="block mb-1 text-base-subtext">Duration (mins)</span>
+              <input type="number" min={0} className="input w-full min-w-0" value={duration} onChange={e => setDuration(e.target.value)} />
+            </label>
+          </div>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <label className="text-sm block">
+              <span className="block mb-1 text-base-subtext">Activity</span>
+              <select className="input w-full min-w-0" value={activity} onChange={e => setActivity(e.target.value as any)}>
+                {ACTIVITIES.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
+              </select>
+            </label>
+            <label className="text-sm block">
+              <span className="block mb-1 text-base-subtext">Notes</span>
+              <input className="input w-full min-w-0" placeholder="Optional notes" value={notes} onChange={e => setNotes(e.target.value)} />
+            </label>
+          </div>
         </div>
-        <div className="mt-3">
-          <button className="btn-primary" onClick={addSession} disabled={loading}>Save Session</button>
+        <div className="mt-4">
+          <button className="btn-primary w-full sm:w-auto" onClick={addSession} disabled={loading}>Save Session</button>
         </div>
         <div className="mt-3 text-xs text-base-subtext">Icons:
           <div className="mt-1 flex flex-wrap gap-3 items-center">
