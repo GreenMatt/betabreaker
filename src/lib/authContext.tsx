@@ -1,4 +1,6 @@
+// lib/authContext.tsx
 "use client"
+
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
@@ -18,11 +20,20 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 async function ensureProfile(user: User) {
+  // Create/update a lightweight profile row for this user (adjust columns to match your schema)
   const meta: any = user.user_metadata || {}
-  const name = meta.full_name || meta.name || meta.user_name || (user.email ? user.email.split('@')[0] : null)
+  const name =
+    meta.full_name ||
+    meta.name ||
+    meta.user_name ||
+    (user.email ? user.email.split('@')[0] : null)
   const email = user.email || meta.email || null
   const profile_photo = meta.avatar_url || null
-  await supabase.from('users').upsert({ id: user.id, email, name, profile_photo }, { onConflict: 'id' })
+
+  // Requires RLS policy to allow insert/update where id = auth.uid()
+  await supabase
+    .from('users')
+    .upsert({ id: user.id, email, name, profile_photo }, { onConflict: 'id' })
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -32,92 +43,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    console.log('Simple auth: Starting...')
-    
-    // Safety timeout - never stay loading forever
-    const safetyTimeout = setTimeout(() => {
-      console.log('Simple auth: Safety timeout - setting loading false')
-      setLoading(false)
-    }, 10000) // 10 seconds max
-    
-    // Simple bootstrap - no watchdogs, no complex timers
-    const initAuth = async () => {
+    // 10s safety so we never block the UI forever
+    const safety = setTimeout(() => setLoading(false), 10_000)
+
+    const init = async () => {
       try {
         const { data, error } = await supabase.auth.getSession()
-        console.log('Simple auth: Initial session:', !!data?.session)
-        
         if (error) {
-          console.error('Simple auth: Session error:', error)
+          console.error('Auth bootstrap error:', error)
           setError(error.message)
-        } else if (data.session) {
+        }
+        if (data?.session) {
           setSession(data.session)
           setUser(data.session.user)
-          try {
-            await ensureProfile(data.session.user)
-            console.log('Simple auth: Profile ensured')
-          } catch (e) {
-            console.warn('Simple auth: Profile failed:', e)
+          try { await ensureProfile(data.session.user) } catch (e) {
+            console.warn('ensureProfile on bootstrap failed:', e)
           }
         }
-      } catch (e: any) {
-        console.error('Simple auth: Init error:', e)
-        setError(e.message)
       } finally {
-        clearTimeout(safetyTimeout)
+        clearTimeout(safety)
         setLoading(false)
       }
     }
 
-    initAuth()
+    init()
 
-    // Simple auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      console.log('Simple auth: State change:', event, !!newSession)
-      
       setSession(newSession)
       setUser(newSession?.user ?? null)
-      
+
       if (event === 'SIGNED_IN' && newSession?.user) {
-        console.log('Simple auth: User signed in, ensuring profile...')
-        try {
-          await ensureProfile(newSession.user)
-          console.log('Simple auth: Profile ensured on sign-in')
-        } catch (e) {
-          console.warn('Simple auth: Profile failed on sign-in:', e)
+        try { await ensureProfile(newSession.user) } catch (e) {
+          console.warn('ensureProfile on sign-in failed:', e)
         }
       }
 
       if (event === 'SIGNED_OUT') {
-        console.log('Simple auth: User signed out, clearing all state')
         setError(null)
-        setUser(null)
-        setSession(null)
       }
 
-      // Always set loading false after processing auth state change
-      console.log('Simple auth: Setting loading false')
       setLoading(false)
     })
 
-    return () => {
-      subscription.unsubscribe()
-      clearTimeout(safetyTimeout)
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
   const signInWith = useCallback(async (provider: Provider) => {
     setError(null)
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithOAuth({ 
-        provider, 
-        options: { 
-          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined 
-        } 
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
+        }
       })
       if (error) setError(error.message)
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to sign in')
     } finally {
       setLoading(false)
     }
@@ -127,15 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithOtp({ 
-        email, 
-        options: { 
-          emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined 
-        } 
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
+        }
       })
       if (error) setError(error.message)
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to send email link')
     } finally {
       setLoading(false)
     }
@@ -143,14 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     setError(null)
-    try {
-      await supabase.auth.signOut()
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to sign out')
-    }
+    await supabase.auth.signOut()
   }, [])
 
-  const value = useMemo(() => ({ user, session, loading, error, signInWith, signInEmail, signOut }), [user, session, loading, error, signInWith, signInEmail, signOut])
+  const value = useMemo(
+    () => ({ user, session, loading, error, signInWith, signInEmail, signOut }),
+    [user, session, loading, error, signInWith, signInEmail, signOut]
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

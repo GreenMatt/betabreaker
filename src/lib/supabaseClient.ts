@@ -1,29 +1,15 @@
-"use client"
+// lib/supabaseClient.ts
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    storageKey: 'supabase.auth.token'
-  },
-  global: {
-    headers: {
-      'x-client-info': 'betabreaker'
-    }
-  },
-  // Add network timeout to prevent hanging
-  realtime: {
-    timeout: 5000
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true, // handles OAuth redirect
+    },
+    // You can tune global schema if needed: db: { schema: 'public' }
   }
-})
-
-// Remove the separate client - it's causing conflicts
-// Just use the main client for everything
-
+)
