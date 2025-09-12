@@ -271,18 +271,20 @@ export default function SessionsPage() {
         <h2 className="font-semibold mb-3">Add Session</h2>
         <div className="space-y-3">
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <div className="min-w-0 overflow-hidden">
+            <div className="min-w-0">
               <label className="text-sm block">
                 <span className="block mb-1 text-base-subtext">Date</span>
-                <div className="relative overflow-hidden">
-                  <input 
-                    type="date" 
-                    className="input w-full text-sm"
-                    style={{ maxWidth: 'calc(100vw - 80px)' }}
-                    value={date} 
-                    onChange={e => setDate(e.target.value)} 
-                  />
-                </div>
+                <input 
+                  type="date" 
+                  className="input w-full text-sm box-border"
+                  style={{ 
+                    maxWidth: '100%', 
+                    width: '100%',
+                    minWidth: '0'
+                  }}
+                  value={date} 
+                  onChange={e => setDate(e.target.value)} 
+                />
               </label>
             </div>
             <label className="text-sm block">
@@ -319,7 +321,7 @@ export default function SessionsPage() {
       </div>
 
       <div className="card">
-        <h2 className="font-semibold mb-3 text-gray-200">This Month</h2>
+        <h2 className="font-semibold mb-3 text-gray-800">This Month</h2>
         {items.length === 0 && (
           <div className="text-center py-6 text-base-subtext">
             <div className="text-3xl mb-2">📅</div>
@@ -388,7 +390,7 @@ export default function SessionsPage() {
                       {/* Session info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-gray-200 text-sm">{activityType}</span>
+                          <span className="font-medium text-gray-800 text-sm">{activityType}</span>
                           {isToday && (
                             <span className="text-xs px-1.5 py-0.5 rounded-full bg-neon-purple/20 text-neon-purple">
                               Today
