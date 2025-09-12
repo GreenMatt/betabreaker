@@ -32,7 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const bootedRef = useRef(false)
-  const watchdogRef = useRef<NodeJS.Timeout | null>(null)
 
   function clearSupabaseLocal() {
     try {
@@ -60,30 +59,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let refreshInterval: NodeJS.Timeout | undefined
     
     // Safety: if bootstrap hangs (corrupt session or blocked storage), clear SB keys and continue
-    // But don't clear during OAuth callback flow
+    // But give OAuth callbacks much more time to complete
+    const isOAuthCallback = typeof window !== 'undefined' && 
+      (window.location.search.includes('code=') || window.location.hash.includes('access_token='))
+    
+    const watchdogTimeout = isOAuthCallback ? 30000 : 8000 // 30 seconds for OAuth, 8 seconds for normal
+    
     const watchdog = setTimeout(() => {
       if (!bootedRef.current) {
-        const isOAuthCallback = typeof window !== 'undefined' && 
-          (window.location.search.includes('code=') || window.location.hash.includes('access_token='))
-        
         if (isOAuthCallback) {
-          console.log('OAuth callback detected, extending watchdog timer')
-          // Give OAuth callbacks much more time to complete
-          const extendedWatchdog = setTimeout(() => {
-            if (!bootedRef.current) {
-              console.log('OAuth callback timed out after extended wait, clearing session')
-              clearSupabaseLocal()
-              setLoading(false)
-            }
-          }, 15000) // 15 seconds for OAuth processing
-          watchdogRef.current = extendedWatchdog
+          console.log('OAuth callback timed out after 30 seconds, clearing session')
         } else {
           console.log('Bootstrap timed out, clearing session')
-          clearSupabaseLocal()
-          setLoading(false)
         }
+        clearSupabaseLocal()
+        setLoading(false)
       }
-    }, 5000)
+    }, watchdogTimeout)
+    
+    if (isOAuthCallback) {
+      console.log('OAuth callback detected, using 30-second timeout')
+    }
 
     // Setup periodic session refresh
     const setupRefreshInterval = (session: Session | null) => {
@@ -191,16 +187,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (event === 'SIGNED_IN' && newSession?.user) {
-        // Clear any pending watchdog timers since we have a successful sign-in
-        if (watchdogRef.current) {
-          console.log('Clearing watchdog timer due to successful sign-in')
-          clearTimeout(watchdogRef.current)
-          watchdogRef.current = null
-        }
-        
-        // Mark as booted to prevent any other watchdogs from firing
+        // Mark as booted to prevent any watchdogs from firing
         bootedRef.current = true
         setLoading(false)
+        console.log('Successful sign-in, clearing watchdog timer')
+        clearTimeout(watchdog)
         
         try { 
           await ensureProfile(newSession.user)
@@ -219,7 +210,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { 
       unsub?.()
       clearTimeout(watchdog)
-      if (watchdogRef.current) clearTimeout(watchdogRef.current)
       if (refreshInterval) clearInterval(refreshInterval)
     }
   }, [])

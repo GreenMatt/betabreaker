@@ -163,6 +163,14 @@ export default function Stabilizer() {
       try {
         if (typeof window === 'undefined') return
         if (sessionStorage.getItem('bb_recovered') === '1') return
+        
+        // Don't trigger during OAuth callback processing
+        const isOAuthCallback = window.location.search.includes('code=') || window.location.hash.includes('access_token=')
+        if (isOAuthCallback) {
+          console.log('[Stabilizer] OAuth callback in progress, skipping watchdog')
+          return
+        }
+        
         const txt = (document.body?.innerText || '').toLowerCase()
         // Only trigger if genuinely stuck on loading AND not successfully signed in
         const looksStuck = txt.includes('loading') && !txt.includes('login') && !txt.includes('signed in') && !txt.includes('welcome back')
