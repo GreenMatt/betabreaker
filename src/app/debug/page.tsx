@@ -135,7 +135,7 @@ export default function DebugPage() {
       try {
         const { data: logsData, error: logsError } = await supabase
           .from('climb_logs')
-          .select('id, user_id, created_at')
+          .select('id, user_id, date')
           .eq('user_id', sessionData.session.user.id)
           .limit(3)
         
@@ -157,7 +157,7 @@ export default function DebugPage() {
       try {
         const { data: userBadgesData, error: userBadgesError } = await supabase
           .from('user_badges')
-          .select('user_id, badge_id, earned_at')
+          .select('user_id, badge_id, earned_date')
           .eq('user_id', sessionData.session.user.id)
           .limit(3)
         
