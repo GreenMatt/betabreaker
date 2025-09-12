@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const bootedRef = useRef(false)
+  const watchdogRef = useRef<NodeJS.Timeout | null>(null)
 
   function clearSupabaseLocal() {
     try {
@@ -68,13 +69,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (isOAuthCallback) {
           console.log('OAuth callback detected, extending watchdog timer')
           // Give OAuth callbacks more time to complete
-          setTimeout(() => {
+          const extendedWatchdog = setTimeout(() => {
             if (!bootedRef.current) {
               console.log('OAuth callback timed out, clearing session')
               clearSupabaseLocal()
               setLoading(false)
             }
           }, 5000) // Additional 5 seconds for OAuth
+          watchdogRef.current = extendedWatchdog
         } else {
           console.log('Bootstrap timed out, clearing session')
           clearSupabaseLocal()
@@ -164,6 +166,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (event === 'SIGNED_IN' && newSession?.user) {
+        // Clear any pending watchdog timers since we have a successful sign-in
+        if (watchdogRef.current) {
+          console.log('Clearing watchdog timer due to successful sign-in')
+          clearTimeout(watchdogRef.current)
+          watchdogRef.current = null
+        }
+        
+        // Mark as booted to prevent any other watchdogs from firing
+        bootedRef.current = true
+        setLoading(false)
+        
         try { 
           await ensureProfile(newSession.user)
           console.log('Profile ensured for user:', newSession.user.id)
@@ -181,6 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { 
       unsub?.()
       clearTimeout(watchdog)
+      if (watchdogRef.current) clearTimeout(watchdogRef.current)
       if (refreshInterval) clearInterval(refreshInterval)
     }
   }, [])
