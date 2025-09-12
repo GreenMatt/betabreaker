@@ -173,36 +173,54 @@ export default function SessionsPage() {
     const key = keyDate.toISOString().slice(0,10)
     const list = grouped.get(key) || []
     const isToday = key === new Date().toISOString().slice(0,10)
+    const hasActivity = list.length > 0
+    
     dayCells.push(
       <button 
         key={`d-${d}`} 
         className={`
-          relative p-3 h-20 border rounded-lg text-left transition-all duration-200
+          relative p-3 h-20 border rounded-lg transition-all duration-200 flex flex-col
           ${isToday 
             ? 'border-neon-purple/50 bg-neon-purple/5 shadow-lg shadow-neon-purple/10' 
-            : 'border-white/10 hover:border-white/20 hover:bg-white/5'
+            : hasActivity
+              ? 'border-white/20 bg-white/5 hover:border-white/30 hover:bg-white/10'
+              : 'border-white/10 hover:border-white/20 hover:bg-white/5'
           }
         `} 
         onClick={() => setDate(key)}
       >
-        <div className={`text-sm font-medium mb-1 ${isToday ? 'text-neon-purple' : 'text-white'}`}>
+        {/* Date number - always at top */}
+        <div className={`
+          text-sm font-medium leading-none
+          ${isToday 
+            ? 'text-neon-purple' 
+            : hasActivity 
+              ? 'text-gray-300' 
+              : 'text-gray-400'
+          }
+        `}>
           {d}
         </div>
-        <div className="flex flex-wrap gap-1 items-start">
-          {list.slice(0,3).map((s, idx) => (
-            <Icon key={s.id + idx} type={normalize(s.activity_type)} size="sm" />
-          ))}
-          {list.length > 3 && (
-            <span className="text-[9px] text-base-subtext bg-white/10 px-1 py-0.5 rounded">
-              +{list.length - 3}
-            </span>
+        
+        {/* Activity indicators - positioned at bottom */}
+        <div className="mt-auto flex items-center justify-center">
+          {hasActivity && (
+            <div className="flex gap-0.5">
+              {list.slice(0,4).map((s, idx) => {
+                const cfg = ACTIVITIES.find(a => a.key === normalize(s.activity_type))!
+                return (
+                  <div 
+                    key={s.id + idx} 
+                    className={`w-1.5 h-1.5 rounded-full ${cfg.bg.replace('/20', '/60')}`}
+                  />
+                )
+              })}
+              {list.length > 4 && (
+                <div className="w-1.5 h-1.5 rounded-full bg-white/40 ml-0.5" />
+              )}
+            </div>
           )}
         </div>
-        {list.length > 0 && (
-          <div className="absolute top-1 right-1">
-            <span className="inline-block w-2 h-2 bg-neon-purple/60 rounded-full"></span>
-          </div>
-        )}
       </button>
     )
   }
