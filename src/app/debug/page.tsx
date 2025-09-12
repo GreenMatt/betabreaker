@@ -243,7 +243,13 @@ export default function DebugPage() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Database Debug & Connectivity Test</h1>
+      <h1 className="text-2xl font-bold mb-2">Database Debug & Connectivity Test</h1>
+      <div className="mb-4 text-sm text-gray-600">
+        <p><strong>Version:</strong> v0.1.0-debug</p>
+        <p><strong>Last Updated:</strong> {new Date('2025-09-12T20:00:00').toLocaleString()}</p>
+        <p><strong>Page Load:</strong> {new Date().toLocaleString()}</p>
+        <p><strong>Environment:</strong> {process.env.NODE_ENV}</p>
+      </div>
       
       <div className="mb-4 p-4 bg-gray-100 rounded">
         <h2 className="font-semibold mb-2">Auth Status:</h2>

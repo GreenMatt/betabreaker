@@ -11,10 +11,14 @@ export default function Page() {
 
   useEffect(() => {
     if (user) {
-      console.log('Page: User available, loading data')
+      console.log('Page: User available, loading data for:', user.email)
       loadData()
+    } else {
+      console.log('Page: No user, clearing data')
+      setStats(null)
+      setAllBadges([])
     }
-  }, [user])
+  }, [user, user?.id])
 
   const loadData = async () => {
     try {
@@ -22,45 +26,67 @@ export default function Page() {
       
       console.log('Simple page: Loading stats and badges')
 
-      // Load stats with simple error handling
+      // Load stats with detailed error handling
       try {
+        console.log('Simple page: Calling get_user_stats RPC...')
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_stats')
+        console.log('Simple page: RPC response:', { data: rpcData, error: rpcError?.message, code: rpcError?.code })
+        
         if (!rpcError && rpcData) {
           const row = Array.isArray(rpcData) ? rpcData[0] : rpcData
+          console.log('Simple page: Processing RPC row:', row)
           if (row) {
-            setStats({
+            const newStats = {
               climbs: row.climb_count ?? 0,
               highest: row.highest_grade ?? 0,
               badges: row.badge_count ?? 0,
               fas: row.fa_count ?? 0
-            })
-            console.log('Simple page: Stats loaded successfully')
+            }
+            setStats(newStats)
+            console.log('Simple page: Stats set successfully:', newStats)
+          } else {
+            console.warn('Simple page: RPC returned no data rows')
+            setStats({ climbs: 0, highest: 0, badges: 0, fas: 0 })
           }
         } else {
-          console.warn('Simple page: RPC failed:', rpcError?.message)
+          console.warn('Simple page: RPC failed, trying fallback:', rpcError?.message, rpcError?.code)
           // Fallback to basic queries
-          const { count: climbs } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
-          const { count: badges } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', user.id)
-          setStats({ climbs: climbs ?? 0, highest: 0, badges: badges ?? 0, fas: 0 })
-          console.log('Simple page: Fallback stats loaded')
+          console.log('Simple page: Fallback - loading climb count...')
+          const { count: climbs, error: climbError } = await supabase.from('climb_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+          console.log('Simple page: Fallback climb result:', { count: climbs, error: climbError?.message })
+          
+          console.log('Simple page: Fallback - loading badge count...')
+          const { count: badges, error: badgeError } = await supabase.from('user_badges').select('user_id', { count: 'exact', head: true }).eq('user_id', user.id)
+          console.log('Simple page: Fallback badge result:', { count: badges, error: badgeError?.message })
+          
+          const fallbackStats = { climbs: climbs ?? 0, highest: 0, badges: badges ?? 0, fas: 0 }
+          setStats(fallbackStats)
+          console.log('Simple page: Fallback stats loaded:', fallbackStats)
         }
       } catch (e) {
-        console.error('Simple page: Stats error:', e)
+        console.error('Simple page: Stats loading exception:', e)
         setStats({ climbs: 0, highest: 0, badges: 0, fas: 0 })
       }
 
-      // Load badges with simple error handling
+      // Load badges with detailed error handling
       try {
+        console.log('Simple page: Loading badges...')
         const { data: badgesData, error: badgesError } = await supabase.from('badges').select('id,name,icon,description').order('name')
+        console.log('Simple page: Badges response:', { 
+          dataLength: badgesData?.length, 
+          error: badgesError?.message, 
+          code: badgesError?.code 
+        })
+        
         if (!badgesError && badgesData) {
           setAllBadges(badgesData)
-          console.log('Simple page: Badges loaded successfully:', badgesData.length)
+          console.log('Simple page: Badges set successfully:', badgesData.length, 'badges')
         } else {
-          console.warn('Simple page: Badges failed:', badgesError?.message)
+          console.warn('Simple page: Badges query failed:', badgesError?.message, badgesError?.code)
           setAllBadges([])
         }
       } catch (e) {
-        console.error('Simple page: Badges error:', e)
+        console.error('Simple page: Badges loading exception:', e)
         setAllBadges([])
       }
 

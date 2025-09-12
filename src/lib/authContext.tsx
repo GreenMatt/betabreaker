@@ -88,7 +88,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'SIGNED_OUT') {
+        console.log('Simple auth: User signed out, clearing all state')
         setError(null)
+        setUser(null)
+        setSession(null)
       }
 
       // Always set loading false after processing auth state change
