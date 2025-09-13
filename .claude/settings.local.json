@@ -5,7 +5,8 @@
       "Bash(docker:*)",
       "Bash(npm run dev:*)",
       "Bash(node:*)",
-      "Bash(git rev-parse:*)"
+      "Bash(git rev-parse:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

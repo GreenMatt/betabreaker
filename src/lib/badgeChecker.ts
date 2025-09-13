@@ -19,8 +19,10 @@ type UserStats = {
 
 export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
   try {
+    console.log('🏆 Badge check starting for user:', userId)
     // Get user stats FIRST to avoid unnecessary queries
     const stats = await getUserStats(userId)
+    console.log('📊 User stats:', stats)
     
     // Get user's current badges
     const { data: userBadges } = await supabase
@@ -40,11 +42,15 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
       .limit(1)
       .maybeSingle()
 
-    if (!recentClimb) return []
+    if (!recentClimb) {
+      console.log('❌ No recent climb found')
+      return []
+    }
 
     const recentGrade = (recentClimb.climbs as any)?.grade || 0
     const recentType = (recentClimb.climbs as any)?.type || 'boulder'
     const wasFlash = recentClimb.attempt_type === 'flashed'
+    console.log('🧗 Recent climb:', { recentGrade, recentType, wasFlash })
 
     // Calculate previous highest grade (excluding the most recent climb)
     const { data: previousClimbs } = await supabase
@@ -59,6 +65,8 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
       ? Math.max(...previousClimbs.slice(1).map(l => (l.climbs as any)?.grade || 0), 0)
       : 0
 
+    console.log('📈 Grade comparison:', { recentGrade, previousHighestGrade, isNewPB: recentGrade > previousHighestGrade })
+
     // Check for specific achievement badges based on recent activity
     const potentialBadges = []
 
@@ -69,6 +77,7 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
 
     // Grade milestones (only check if this recent climb achieved a new highest grade)
     if (recentGrade > previousHighestGrade && recentGrade >= 3) {
+      console.log('🎯 Adding grade milestone for grade:', recentGrade)
       potentialBadges.push({ type: 'grade_milestone', criteria: { highestGrade: recentGrade } })
     }
 
@@ -92,13 +101,19 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
       potentialBadges.push({ type: 'points_milestone', criteria: { totalPoints: pointsMilestone } })
     }
 
+    console.log('🎖️ Potential badges to check:', potentialBadges)
+
     // Now get actual badges from database that match our potential achievements
     const { data: allBadges } = await supabase
       .from('badges')
       .select('id, name, description, icon, criteria')
 
-    if (!allBadges) return []
+    if (!allBadges) {
+      console.log('❌ No badges found in database')
+      return []
+    }
 
+    console.log('💾 Available badges in database:', allBadges.length)
     const newBadges: Badge[] = []
     
     for (const badge of allBadges) {
@@ -117,8 +132,9 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
       })
 
       if (isRelevant && meetsCriteria(stats, badge.criteria)) {
+        console.log('🏆 Awarding badge:', badge.name)
         newBadges.push(badge)
-        
+
         // Award the badge in database
         await supabase
           .from('user_badges')
@@ -128,7 +144,8 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
           })
       }
     }
-    
+
+    console.log('✅ Badge check complete. New badges awarded:', newBadges.length)
     return newBadges
   } catch (error) {
     console.error('Error checking badges:', error)
@@ -234,8 +251,13 @@ function meetsCriteria(stats: UserStats, criteria: any): boolean {
 
 // Helper function to trigger badge check after important actions
 export async function triggerBadgeCheck(userId: string, awardCallback: (badges: Badge[]) => void) {
+  console.log('🚀 Triggering badge check for user:', userId)
   const newBadges = await checkAndAwardBadges(userId)
+  console.log('🎁 Badge check result:', newBadges)
   if (newBadges.length > 0) {
+    console.log('🎉 Calling award callback with badges:', newBadges.map(b => b.name))
     awardCallback(newBadges)
+  } else {
+    console.log('📭 No new badges to award')
   }
 }
