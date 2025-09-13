@@ -62,10 +62,11 @@ export default function LeaderboardsPage() {
           .from('climb_logs')
           .select(`
             user_id,
-            users!inner(name, profile_photo),
+            users!inner(name, profile_photo, private_profile),
             climbs!inner(grade)
           `)
           .in('attempt_type', ['sent', 'flashed'])
+          .eq('users.private_profile', false)
         
         if (timeFilter) {
           query = query.gte('created_at', timeFilter)
@@ -111,10 +112,11 @@ export default function LeaderboardsPage() {
           .from('climb_logs')
           .select(`
             user_id,
-            users!inner(name, profile_photo),
+            users!inner(name, profile_photo, private_profile),
             climbs!inner(grade)
           `)
           .in('attempt_type', ['sent', 'flashed'])
+          .eq('users.private_profile', false)
         
         if (timeFilter) {
           query = query.gte('created_at', timeFilter)
@@ -161,10 +163,11 @@ export default function LeaderboardsPage() {
           .from('climb_logs')
           .select(`
             user_id,
-            users!inner(name, profile_photo),
+            users!inner(name, profile_photo, private_profile),
             climbs!inner(grade, type)
           `)
           .in('attempt_type', ['sent', 'flashed'])
+          .eq('users.private_profile', false)
         
         if (timeFilter) {
           query = query.gte('created_at', timeFilter)
@@ -223,9 +226,10 @@ export default function LeaderboardsPage() {
           .select(`
             user_id,
             created_at,
-            users!inner(name, profile_photo)
+            users!inner(name, profile_photo, private_profile)
           `)
           .in('attempt_type', ['sent', 'flashed'])
+          .eq('users.private_profile', false)
         
         if (timeFilter) {
           query = query.gte('created_at', timeFilter)
@@ -416,7 +420,7 @@ export default function LeaderboardsPage() {
                         </div>
                       )}
                       <div>
-                        <div className="font-medium text-white">
+                        <div className="font-medium text-gray-800">
                           {leader.name || 'Anonymous User'}
                         </div>
                         {leader.extra_info && (
