@@ -13,6 +13,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
   const { id } = params
   const qp = useSearchParams()
   const openLog = qp?.get('log') === '1'
+  const { awardBadge } = useBadgeAwardContext()
   const [climb, setClimb] = useState<Climb | null>(null)
   const [photos, setPhotos] = useState<Array<{ id: string, image_base64: string | null }>>([])
   const [videos, setVideos] = useState<Array<{ id: string, url: string, user_id?: string | null }>>([])
@@ -159,6 +160,20 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
         </div>
         <div className="mt-3">
           <button className="btn-primary" onClick={() => setShowLog(true)}>Log this climb</button>
+          <button
+            className="btn-primary ml-2"
+            onClick={() => {
+              console.log('🧪 Testing badge popup manually')
+              awardBadge({
+                id: 'test-badge',
+                name: 'Test Badge',
+                description: 'This is a test badge to verify the popup works',
+                icon: '/icons/betabreaker_header.png'
+              })
+            }}
+          >
+            Test Badge
+          </button>
         </div>
       </div>
       <div className="card">
@@ -491,6 +506,7 @@ function SendLogModal({ climbId, onClose }: { climbId: string, onClose: () => vo
       }
       
       // Check for new badges after successful climb log
+      console.log('💾 About to trigger badge check for user:', uid)
       await triggerBadgeCheck(uid, awardMultipleBadges)
       
       onClose()
