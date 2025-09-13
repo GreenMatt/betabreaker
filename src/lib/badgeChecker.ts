@@ -19,13 +19,9 @@ type UserStats = {
 
 export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
   try {
-    // Get all available badges
-    const { data: allBadges } = await supabase
-      .from('badges')
-      .select('id, name, description, icon, criteria')
-
-    if (!allBadges) return []
-
+    // Get user stats FIRST to avoid unnecessary queries
+    const stats = await getUserStats(userId)
+    
     // Get user's current badges
     const { data: userBadges } = await supabase
       .from('user_badges')
@@ -34,18 +30,80 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
 
     const earnedBadgeIds = new Set((userBadges || []).map(ub => ub.badge_id))
 
-    // Get user stats
-    const stats = await getUserStats(userId)
-    
-    // Check each badge criteria
+    // Get user's recent climb to check incremental progress
+    const { data: recentClimb } = await supabase
+      .from('climb_logs')
+      .select('attempt_type, climbs!inner(grade, type)')
+      .eq('user_id', userId)
+      .in('attempt_type', ['sent', 'flashed'])
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!recentClimb) return []
+
+    const recentGrade = (recentClimb.climbs as any)?.grade || 0
+    const recentType = (recentClimb.climbs as any)?.type || 'boulder'
+    const wasFlash = recentClimb.attempt_type === 'flashed'
+
+    // Check for specific achievement badges based on recent activity
+    const potentialBadges = []
+
+    // First-time achievements
+    if (stats.climbCount === 1) {
+      potentialBadges.push({ type: 'first_send', criteria: { climbCount: 1 } })
+    }
+
+    // Grade milestones (only check if this recent climb is highest grade)
+    if (recentGrade === stats.highestGrade && recentGrade >= 3) {
+      potentialBadges.push({ type: 'grade_milestone', criteria: { highestGrade: recentGrade } })
+    }
+
+    // Flash achievements
+    if (wasFlash) {
+      potentialBadges.push({ type: 'flash_achievement', criteria: { flashCount: stats.flashCount } })
+    }
+
+    // Milestone achievements (only check at specific numbers)
+    const milestones = [5, 10, 25, 50, 100, 250, 500]
+    if (milestones.includes(stats.climbCount)) {
+      potentialBadges.push({ type: 'climb_milestone', criteria: { climbCount: stats.climbCount } })
+    }
+
+    // Points milestones (only check at specific thresholds)
+    const pointsMilestones = [100, 500, 1000, 2500, 5000, 10000]
+    const pointsMilestone = pointsMilestones.find(m => 
+      stats.totalPoints >= m && stats.totalPoints - calculateClimbPoints(recentGrade, recentType, wasFlash) < m
+    )
+    if (pointsMilestone) {
+      potentialBadges.push({ type: 'points_milestone', criteria: { totalPoints: pointsMilestone } })
+    }
+
+    // Now get actual badges from database that match our potential achievements
+    const { data: allBadges } = await supabase
+      .from('badges')
+      .select('id, name, description, icon, criteria')
+
+    if (!allBadges) return []
+
     const newBadges: Badge[] = []
     
     for (const badge of allBadges) {
       // Skip if user already has this badge
       if (earnedBadgeIds.has(badge.id)) continue
       
-      // Check if user meets criteria
-      if (meetsCriteria(stats, badge.criteria)) {
+      // Only check badges that are relevant to recent activity
+      const isRelevant = potentialBadges.some(pb => {
+        const criteria = badge.criteria || {}
+        if (pb.type === 'first_send' && criteria.climbCount === 1) return true
+        if (pb.type === 'grade_milestone' && criteria.highestGrade === recentGrade) return true
+        if (pb.type === 'flash_achievement' && wasFlash && criteria.flashCount) return true
+        if (pb.type === 'climb_milestone' && criteria.climbCount === stats.climbCount) return true
+        if (pb.type === 'points_milestone' && criteria.totalPoints === pointsMilestone) return true
+        return false
+      })
+
+      if (isRelevant && meetsCriteria(stats, badge.criteria)) {
         newBadges.push(badge)
         
         // Award the badge in database
@@ -63,6 +121,17 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
     console.error('Error checking badges:', error)
     return []
   }
+}
+
+function calculateClimbPoints(grade: number, type: string, wasFlash: boolean): number {
+  let points = 0
+  switch (type) {
+    case 'boulder': points = grade * 10; break
+    case 'top_rope': points = grade * 5; break
+    case 'lead': points = grade * 15; break
+    default: points = grade * 10; break
+  }
+  return points
 }
 
 async function getUserStats(userId: string): Promise<UserStats> {
