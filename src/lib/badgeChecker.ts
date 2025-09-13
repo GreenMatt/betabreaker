@@ -143,10 +143,10 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
 
         // Grade/level milestones - handle both formats
         if (pb.type === 'grade_milestone') {
-          // New format: {type: 'level', level: X}
-          if (criteria.type === 'level' && criteria.level && criteria.level <= recentGrade) return true
-          // Legacy format: {highestGrade: X}
-          if (criteria.highestGrade && criteria.highestGrade <= recentGrade) return true
+          // New format: {type: 'level', level: X} - only award the exact grade achieved
+          if (criteria.type === 'level' && criteria.level && criteria.level === recentGrade) return true
+          // Legacy format: {highestGrade: X} - only award the exact grade achieved
+          if (criteria.highestGrade && criteria.highestGrade === recentGrade) return true
         }
 
         // Flash achievements
