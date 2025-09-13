@@ -72,7 +72,7 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
 
     // First-time achievements
     if (stats.climbCount === 1) {
-      potentialBadges.push({ type: 'first_send', criteria: { climbCount: 1 } })
+      potentialBadges.push({ type: 'first_send', criteria: { type: 'first_send' } })
     }
 
     // Grade milestones (only check if this recent climb achieved a new highest grade)
