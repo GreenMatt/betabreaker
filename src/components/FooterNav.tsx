@@ -17,7 +17,7 @@ export default function FooterNav() {
       <Link href="/log" className={`${base} ${isActive('/log') ? active : ''}`}>Log</Link>
       <Link href="/feed" className={`${base} ${isActive('/feed') ? active : ''}`}>Feed</Link>
       <Link href="/sessions" className={`${base} ${isActive('/sessions') ? active : ''}`}>Training</Link>
-      <Link href="/profile/me" className={`${base} ${isActive('/profile') ? active : ''}`}>Profile</Link>
+      <Link href="/leaderboards" className={`${base} ${isActive('/leaderboards') ? active : ''}`}>Leaders</Link>
     </div>
   )
 }
