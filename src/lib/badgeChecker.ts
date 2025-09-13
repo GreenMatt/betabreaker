@@ -194,8 +194,17 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
       }
     }
 
-    console.log('✅ Badge check complete. New badges awarded:', newBadges.length)
-    return newBadges
+    // Deduplicate badges by ID before returning
+    const badgeMap = new Map<string, Badge>()
+    newBadges.forEach(badge => {
+      if (!badgeMap.has(badge.id)) {
+        badgeMap.set(badge.id, badge)
+      }
+    })
+    const uniqueNewBadges = Array.from(badgeMap.values())
+
+    console.log('✅ Badge check complete. New badges awarded:', uniqueNewBadges.length)
+    return uniqueNewBadges
   } catch (error) {
     console.error('Error checking badges:', error)
     return []
@@ -316,14 +325,21 @@ export async function triggerBadgeCheck(userId: string, awardCallback: (badges: 
   const newBadges = await checkAndAwardBadges(userId)
   console.log('🎁 Badge check result:', newBadges)
 
-  // Deduplicate badges by ID (prevent duplicate popups)
-  const uniqueBadges = newBadges.filter((badge, index, array) =>
-    array.findIndex(b => b.id === badge.id) === index
-  )
+  // Double-check deduplication by ID (prevent duplicate popups)
+  const badgeMap = new Map<string, Badge>()
+  newBadges.forEach(badge => {
+    if (!badgeMap.has(badge.id)) {
+      badgeMap.set(badge.id, badge)
+    }
+  })
+  const uniqueBadges = Array.from(badgeMap.values())
 
   if (uniqueBadges.length > 0) {
-    console.log('🎉 Calling award callback with badges:', uniqueBadges.map(b => b.name))
-    awardCallback(uniqueBadges)
+    console.log('🎉 Calling award callback with unique badges:', uniqueBadges.map(b => b.name))
+    // Award each badge individually to ensure one popup per unique badge
+    uniqueBadges.forEach(badge => {
+      awardCallback([badge])
+    })
   } else {
     console.log('📭 No new badges to award')
   }
