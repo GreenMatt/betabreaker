@@ -46,6 +46,19 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
     const recentType = (recentClimb.climbs as any)?.type || 'boulder'
     const wasFlash = recentClimb.attempt_type === 'flashed'
 
+    // Calculate previous highest grade (excluding the most recent climb)
+    const { data: previousClimbs } = await supabase
+      .from('climb_logs')
+      .select('climbs!inner(grade)')
+      .eq('user_id', userId)
+      .in('attempt_type', ['sent', 'flashed'])
+      .order('date', { ascending: false })
+      .limit(100)
+
+    const previousHighestGrade = previousClimbs && previousClimbs.length > 1
+      ? Math.max(...previousClimbs.slice(1).map(l => (l.climbs as any)?.grade || 0), 0)
+      : 0
+
     // Check for specific achievement badges based on recent activity
     const potentialBadges = []
 
@@ -54,8 +67,8 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
       potentialBadges.push({ type: 'first_send', criteria: { climbCount: 1 } })
     }
 
-    // Grade milestones (only check if this recent climb is highest grade)
-    if (recentGrade === stats.highestGrade && recentGrade >= 3) {
+    // Grade milestones (only check if this recent climb achieved a new highest grade)
+    if (recentGrade > previousHighestGrade && recentGrade >= 3) {
       potentialBadges.push({ type: 'grade_milestone', criteria: { highestGrade: recentGrade } })
     }
 
@@ -96,7 +109,7 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
       const isRelevant = potentialBadges.some(pb => {
         const criteria = badge.criteria || {}
         if (pb.type === 'first_send' && criteria.climbCount === 1) return true
-        if (pb.type === 'grade_milestone' && criteria.highestGrade === recentGrade) return true
+        if (pb.type === 'grade_milestone' && criteria.highestGrade && criteria.highestGrade <= recentGrade) return true
         if (pb.type === 'flash_achievement' && wasFlash && criteria.flashCount) return true
         if (pb.type === 'climb_milestone' && criteria.climbCount === stats.climbCount) return true
         if (pb.type === 'points_milestone' && criteria.totalPoints === pointsMilestone) return true
