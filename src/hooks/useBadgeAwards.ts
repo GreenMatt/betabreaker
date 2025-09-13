@@ -56,17 +56,23 @@ export function useBadgeAwards() {
   }, [])
 
   const awardMultipleBadges = useCallback((badges: Badge[]) => {
-    // Deduplicate badges by ID before processing
-    const badgeMap = new Map<string, Badge>()
-    badges.forEach(badge => {
-      if (!badgeMap.has(badge.id)) {
-        badgeMap.set(badge.id, badge)
-      }
-    })
-    const uniqueBadges = Array.from(badgeMap.values())
+    console.log('🎁 awardMultipleBadges called with:', badges.map(b => b.name))
 
-    console.log('🎁 Awarding multiple badges:', uniqueBadges.map(b => b.name))
-    uniqueBadges.forEach(badge => awardBadge(badge))
+    // Should only receive single badge arrays from the updated triggerBadgeCheck
+    if (badges.length === 1) {
+      awardBadge(badges[0])
+    } else if (badges.length > 1) {
+      // Fallback: handle multiple badges with deduplication
+      const badgeMap = new Map<string, Badge>()
+      badges.forEach(badge => {
+        if (!badgeMap.has(badge.id)) {
+          badgeMap.set(badge.id, badge)
+        }
+      })
+      const uniqueBadges = Array.from(badgeMap.values())
+      console.log('🔄 Processing multiple badges:', uniqueBadges.map(b => b.name))
+      uniqueBadges.forEach(badge => awardBadge(badge))
+    }
   }, [awardBadge])
 
   return {

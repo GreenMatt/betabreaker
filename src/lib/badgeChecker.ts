@@ -355,7 +355,13 @@ export async function triggerBadgeCheck(userId: string, awardCallback: (badges: 
 
       if (badgesToShow.length > 0) {
         console.log('🎊 Showing popups for badges:', badgesToShow.map(b => b.name))
-        awardCallback(badgesToShow)
+        // Award each badge individually with a small delay to prevent race conditions
+        badgesToShow.forEach((badge, index) => {
+          setTimeout(() => {
+            console.log('🎯 Triggering popup for:', badge.name)
+            awardCallback([badge])
+          }, index * 100) // 100ms delay between badges
+        })
       } else {
         console.log('🚫 All badges filtered out by popup deduplicator')
       }
