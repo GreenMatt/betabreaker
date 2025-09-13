@@ -102,6 +102,7 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
     }
 
     console.log('🎖️ Potential badges to check:', potentialBadges)
+    console.log('👤 User already has these badge IDs:', Array.from(earnedBadgeIds))
 
     // Now get actual badges from database that match our potential achievements
     const { data: allBadges } = await supabase
@@ -117,9 +118,14 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
     const newBadges: Badge[] = []
     
     for (const badge of allBadges) {
+      console.log('🔍 Checking badge:', badge.name, 'with criteria:', badge.criteria)
+
       // Skip if user already has this badge
-      if (earnedBadgeIds.has(badge.id)) continue
-      
+      if (earnedBadgeIds.has(badge.id)) {
+        console.log('⏭️ User already has badge:', badge.name)
+        continue
+      }
+
       // Only check badges that are relevant to recent activity
       const isRelevant = potentialBadges.some(pb => {
         const criteria = badge.criteria || {}
@@ -131,9 +137,15 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
         return false
       })
 
-      if (isRelevant && meetsCriteria(stats, badge.criteria)) {
-        console.log('🏆 Awarding badge:', badge.name)
-        newBadges.push(badge)
+      console.log('📋 Badge relevance check:', { badgeName: badge.name, isRelevant })
+
+      if (isRelevant) {
+        const meetsCrit = meetsCriteria(stats, badge.criteria)
+        console.log('✅ Criteria check:', { badgeName: badge.name, meetsCrit, userStats: stats, badgeCriteria: badge.criteria })
+
+        if (meetsCrit) {
+          console.log('🏆 Awarding badge:', badge.name)
+          newBadges.push(badge)
 
         // Award the badge in database
         await supabase
