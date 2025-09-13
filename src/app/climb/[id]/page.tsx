@@ -283,32 +283,53 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
       </div>
 
       <div className="card">
-        <h2 className="font-semibold mb-2">Ascents</h2>
+        <h2 className="font-semibold mb-4">Ascents</h2>
         {sends.length === 0 && (
-          <div className="text-base-subtext text-sm">No sends yet.</div>
+          <div className="text-center py-8">
+            <div className="text-4xl mb-2">🧗‍♀️</div>
+            <div className="text-base-subtext">No sends yet.</div>
+            <div className="text-sm text-base-subtext mt-1">Be the first to conquer this climb!</div>
+          </div>
         )}
         {sends.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-base-subtext">
-                <tr>
-                  <th className="py-1">User</th>
-                  <th className="py-1">Date</th>
-                  <th className="py-1">Attempt</th>
-                  <th className="py-1">FA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sends.map((s, i) => (
-                  <tr key={i} className="border-t border-black/10">
-                    <td className="py-1">{s.user_name || 'User'}</td>
-                    <td className="py-1">{new Date(s.date).toLocaleString()}</td>
-                    <td className="py-1 capitalize">{s.attempt_type}</td>
-                    <td className="py-1">{s.fa ? 'FA' : ''}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {sends.map((s, i) => (
+              <div key={i} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all duration-200 group">
+                {/* User Info */}
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm shadow-lg">
+                    {(s.user_name || 'U')[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">{s.user_name || 'Anonymous Climber'}</div>
+                    <div className="text-xs text-gray-500">{new Date(s.date).toLocaleDateString()}</div>
+                  </div>
+                </div>
+
+                {/* Attempt Type Badge */}
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm ${
+                    s.attempt_type === 'flashed'
+                      ? 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white'
+                      : 'bg-gradient-to-r from-green-400 to-emerald-400 text-white'
+                  }`}>
+                    {s.attempt_type === 'flashed' ? '⚡ Flashed' : '🎯 Sent'}
+                  </span>
+
+                  {/* FA Badge */}
+                  {s.fa && (
+                    <span className="px-2 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-full shadow-lg">
+                      🏆 FA
+                    </span>
+                  )}
+                </div>
+
+                {/* Time */}
+                <div className="text-xs text-gray-400 ml-4 min-w-0">
+                  {new Date(s.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
