@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import ActivityCard from '@/components/ActivityCard'
+import { useBadgeAwardContext } from '@/contexts/BadgeAwardContext'
+import { triggerBadgeCheck } from '@/lib/badgeChecker'
 // Lazy-load Supabase on the client to avoid Edge runtime pulling Node builtins
 const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
@@ -13,6 +15,7 @@ type Photo = { id: string; climb_id: string; image_base64: string | null; create
 
 export default function GymDetailPage({ params }: { params: { id: string } }) {
   const gid = params.id
+  const { awardMultipleBadges } = useBadgeAwardContext()
   const [gym, setGym] = useState<Gym | null>(null)
   const [climbs, setClimbs] = useState<Climb[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
@@ -444,8 +447,11 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
     if (typeof defaults?.grade === 'number') {
       await supabase.from('community_ratings').upsert({ user_id: uid, climb_id: climbId, rating: defaults.grade }, { onConflict: 'user_id,climb_id' })
     }
+
+    // Check for new badges after successful climb log
+    await triggerBadgeCheck(uid, awardMultipleBadges)
+
     loadActivity().catch(() => {})
-    alert('Logged!')
   }
 
   return (

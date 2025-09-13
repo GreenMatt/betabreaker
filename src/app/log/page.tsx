@@ -1,11 +1,14 @@
 "use client"
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useBadgeAwardContext } from '@/contexts/BadgeAwardContext'
+import { triggerBadgeCheck } from '@/lib/badgeChecker'
 
 type Gym = { id: string; name: string }
 type Climb = { id: string; name: string; gym_id: string }
 
 export default function QuickLogPage() {
+  const { awardMultipleBadges } = useBadgeAwardContext()
   const [gyms, setGyms] = useState<Gym[]>([])
   const [climbs, setClimbs] = useState<Climb[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -75,6 +78,9 @@ export default function QuickLogPage() {
           .upsert({ user_id: user.id, climb_id: form.climb_id, rating: form.community_grade }, { onConflict: 'user_id,climb_id' })
         if (comErr) throw comErr
       }
+
+      // Check for new badges after successful climb log
+      await triggerBadgeCheck(user.id, awardMultipleBadges)
 
       setStatus('Logged!')
       setForm({ gym_id: form.gym_id, climb_id: '', attempt_type: 'flashed', attempts: 1, personal_rating: 3, community_grade: 5, notes: '' })
