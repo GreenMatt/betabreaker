@@ -14,46 +14,63 @@ export function useBadgeAwards() {
   const [isPopupVisible, setIsPopupVisible] = useState(false)
 
   const awardBadge = useCallback((badge: Badge) => {
-    // Dedup check to prevent duplicate popups for the same badge
-    setPendingBadges(prev => {
-      // Check if this badge is already in pending or currently showing
-      const alreadyPending = prev.some(b => b.id === badge.id)
-      const currentlyShowing = currentBadge?.id === badge.id && isPopupVisible
+    console.log('🎯 awardBadge called for:', badge.name, 'ID:', badge.id)
+    console.log('🎯 Current state - isPopupVisible:', isPopupVisible, 'currentBadge:', currentBadge?.name)
 
-      if (alreadyPending || currentlyShowing) {
-        console.log('🚫 Badge already pending or showing:', badge.name)
+    // Check if this exact badge is already being processed
+    if (currentBadge?.id === badge.id && isPopupVisible) {
+      console.log('🚫 EXACT same badge already showing, ignoring:', badge.name)
+      return
+    }
+
+    // Add to pending queue
+    setPendingBadges(prev => {
+      const alreadyPending = prev.some(b => b.id === badge.id)
+
+      if (alreadyPending) {
+        console.log('🚫 Badge already in pending queue:', badge.name)
         return prev
       }
 
+      console.log('✅ Adding badge to pending queue:', badge.name)
       return [...prev, badge]
     })
 
     // If no popup is currently showing, show this one immediately
     if (!isPopupVisible) {
+      console.log('✅ No popup showing, displaying immediately:', badge.name)
       setCurrentBadge(badge)
       setIsPopupVisible(true)
+    } else {
+      console.log('⏳ Popup already showing, badge queued:', badge.name)
     }
   }, [isPopupVisible, currentBadge])
 
   const closePopup = useCallback(() => {
+    console.log('🔄 closePopup called, current badge:', currentBadge?.name)
     setIsPopupVisible(false)
     setCurrentBadge(null)
-    
+
     // Remove the current badge from pending and show next one if available
     setPendingBadges(prev => {
+      console.log('🔄 Pending badges before processing:', prev.map(b => b.name))
       const remaining = prev.slice(1)
-      
+      console.log('🔄 Remaining badges after removing first:', remaining.map(b => b.name))
+
       // Show next badge if available
       if (remaining.length > 0) {
+        console.log('🔄 Showing next badge after 500ms:', remaining[0].name)
         setTimeout(() => {
           setCurrentBadge(remaining[0])
           setIsPopupVisible(true)
         }, 500) // Small delay between popups
+      } else {
+        console.log('🔄 No more badges in queue')
       }
-      
+
       return remaining
     })
-  }, [])
+  }, [currentBadge])
 
   const awardMultipleBadges = useCallback((badges: Badge[]) => {
     console.log('🎁 awardMultipleBadges called with:', badges.map(b => b.name))
