@@ -69,7 +69,7 @@ export default function LeaderboardsPage() {
           .eq('users.private_profile', false)
         
         if (timeFilter) {
-          query = query.gte('created_at', timeFilter)
+          query = query.gte('date', timeFilter)
         }
 
         const { data, error } = await query
@@ -119,7 +119,7 @@ export default function LeaderboardsPage() {
           .eq('users.private_profile', false)
         
         if (timeFilter) {
-          query = query.gte('created_at', timeFilter)
+          query = query.gte('date', timeFilter)
         }
 
         const { data, error } = await query
@@ -170,7 +170,7 @@ export default function LeaderboardsPage() {
           .eq('users.private_profile', false)
         
         if (timeFilter) {
-          query = query.gte('created_at', timeFilter)
+          query = query.gte('date', timeFilter)
         }
 
         const { data, error } = await query
@@ -225,14 +225,14 @@ export default function LeaderboardsPage() {
           .from('climb_logs')
           .select(`
             user_id,
-            created_at,
+            date,
             users!inner(name, profile_photo, private_profile)
           `)
           .in('attempt_type', ['sent', 'flashed'])
           .eq('users.private_profile', false)
         
         if (timeFilter) {
-          query = query.gte('created_at', timeFilter)
+          query = query.gte('date', timeFilter)
         }
 
         const { data, error } = await query
@@ -244,19 +244,19 @@ export default function LeaderboardsPage() {
         
         for (const log of data || []) {
           const userId = log.user_id
-          const date = new Date(log.created_at).toISOString().split('T')[0]
+          const date = new Date(log.date).toISOString().split('T')[0]
           
           if (!userStats[userId]) {
             userStats[userId] = {
               name: (log.users as any).name,
               profile_photo: (log.users as any).profile_photo,
               activeDays: new Set(),
-              lastActive: log.created_at
+              lastActive: log.date
             }
           }
           userStats[userId].activeDays.add(date)
-          if (new Date(log.created_at) > new Date(userStats[userId].lastActive)) {
-            userStats[userId].lastActive = log.created_at
+          if (new Date(log.date) > new Date(userStats[userId].lastActive)) {
+            userStats[userId].lastActive = log.date
           }
         }
 
