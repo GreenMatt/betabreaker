@@ -53,14 +53,20 @@ export function useBadgeAwards() {
 
   const closePopup = useCallback(() => {
     console.log('🔄 closePopup called, current badge:', currentBadge?.name)
+    const closingBadge = currentBadge
     setIsPopupVisible(false)
     setCurrentBadge(null)
 
-    // Remove the current badge from pending and show next one if available
+    // Remove the SPECIFIC badge that was showing from pending
     setPendingBadges(prev => {
       console.log('🔄 Pending badges before processing:', prev.map(b => b.name))
-      const remaining = prev.slice(1)
-      console.log('🔄 Remaining badges after removing first:', remaining.map(b => b.name))
+
+      // Remove the badge that was actually showing (by ID)
+      const remaining = closingBadge
+        ? prev.filter(b => b.id !== closingBadge.id)
+        : prev.slice(1) // fallback to removing first if no current badge
+
+      console.log('🔄 Remaining badges after removing closed badge:', remaining.map(b => b.name))
 
       // Show next badge if available
       if (remaining.length > 0) {
