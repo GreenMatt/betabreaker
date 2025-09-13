@@ -354,7 +354,7 @@ export default function LeaderboardsPage() {
             onClick={() => setActiveType(key as LeaderboardType)}
           >
             <div className="text-2xl mb-1">{cfg.icon}</div>
-            <div className="text-sm font-medium text-white">{cfg.label}</div>
+            <div className="text-sm font-medium text-gray-800">{cfg.label}</div>
           </button>
         ))}
       </div>
@@ -434,7 +434,7 @@ export default function LeaderboardsPage() {
 
                   {/* Value */}
                   <div className="text-right">
-                    <div className={`text-2xl font-bold ${leader.rank === 1 ? 'text-yellow-400' : leader.rank === 2 ? 'text-gray-300' : leader.rank === 3 ? 'text-amber-500' : 'text-white'}`}>
+                    <div className={`text-2xl font-bold ${leader.rank === 1 ? 'text-yellow-400' : leader.rank === 2 ? 'text-gray-600' : leader.rank === 3 ? 'text-amber-500' : 'text-gray-800'}`}>
                       {formatValue(leader.value, activeType)}
                     </div>
                     <div className="text-xs text-gray-800">
