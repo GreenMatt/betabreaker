@@ -155,13 +155,14 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
           console.log('🏆 Awarding badge:', badge.name)
           newBadges.push(badge)
 
-        // Award the badge in database
-        await supabase
-          .from('user_badges')
-          .insert({
-            user_id: userId,
-            badge_id: badge.id
-          })
+          // Award the badge in database
+          await supabase
+            .from('user_badges')
+            .insert({
+              user_id: userId,
+              badge_id: badge.id
+            })
+        }
       }
     }
 
