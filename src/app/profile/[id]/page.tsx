@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import AuthButtons from '@/components/AuthButtons'
 import UploadButton from '@/components/UploadButton'
 import { supabase } from '@/lib/supabaseClient'
