@@ -11,6 +11,7 @@ type Profile = {
   name: string | null
   profile_photo: string | null
   bio?: string | null
+  route_setter?: boolean
 }
 
 export default function ProfilePage({ params }: { params: { id: string } }) {
@@ -58,14 +59,14 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   async function loadProfile(userId: string) {
     const { data } = await supabase
       .from('users')
-      .select('id,name,profile_photo,bio')
+      .select('id,name,profile_photo,bio,route_setter')
       .eq('id', userId)
       .maybeSingle()
     if (data) {
       setProfile(data as Profile)
       setEditingName((data as Profile).name ?? '')
     } else {
-      setProfile({ id: userId, name: null, profile_photo: null })
+      setProfile({ id: userId, name: null, profile_photo: null, route_setter: false })
       setEditingName('')
     }
   }
@@ -159,24 +160,40 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
           )}
           <div className="flex-1">
             {!isOwner && (
-              <div className="font-semibold">{displayName()}</div>
-            )}
-            {isOwner && (
               <div className="flex items-center gap-2">
-                <input
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  placeholder="Your name"
-                  className="input w-full max-w-xs"
-                />
-                <button
-                  className="btn-primary"
-                  onClick={saveName}
-                  disabled={saving}
-                >{saving ? 'Saving…' : 'Save'}</button>
+                <div className="font-semibold">{displayName()}</div>
+                {profile?.route_setter && (
+                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-orange-400 to-red-500 text-white text-xs font-bold shadow-lg">
+                    <span>🧗</span>
+                    <span>Route Setter</span>
+                  </div>
+                )}
               </div>
             )}
-            <div className="text-xs text-base-subtext">Badges: {badges.length}</div>
+            {isOwner && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    placeholder="Your name"
+                    className="input w-full max-w-xs"
+                  />
+                  <button
+                    className="btn-primary"
+                    onClick={saveName}
+                    disabled={saving}
+                  >{saving ? 'Saving…' : 'Save'}</button>
+                </div>
+                {profile?.route_setter && (
+                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-orange-400 to-red-500 text-white text-xs font-bold shadow-lg">
+                    <span>🧗</span>
+                    <span>Route Setter</span>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="text-xs text-base-subtext mt-2">Badges: {badges.length}</div>
           </div>
         </div>
         {isOwner && (

@@ -32,6 +32,7 @@ type FollowActivity = BaseActivity & {
   color: string | null
   user_name: string | null
   profile_photo: string | null
+  route_setter?: boolean
   bump_count?: number
   bumped?: boolean
 }
@@ -47,6 +48,7 @@ type GymActivity = BaseActivity & {
   bump_count?: number
   comments?: any[]
   profile_photo?: string | null
+  route_setter?: boolean
 }
 
 type ActivityData = OwnActivity | FollowActivity | GymActivity
@@ -56,6 +58,7 @@ type Comment = {
   profile_photo: string | null
   comment: string
   created_at: string
+  route_setter?: boolean
 }
 
 type ActivityCardProps = {
@@ -92,7 +95,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
   async function loadComments() {
     const { data } = await supabase
       .from('bumps')
-      .select('log_id, comment, created_at, user:users(name, profile_photo)')
+      .select('log_id, comment, created_at, user:users(name, profile_photo, route_setter)')
       .eq('log_id', activity.id)
       .not('comment', 'is', null)
       .order('created_at', { ascending: false })
@@ -102,6 +105,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
       profile_photo: r.user?.profile_photo ?? null,
       comment: r.comment,
       created_at: r.created_at,
+      route_setter: r.user?.route_setter ?? false,
     }))
     
     setLocalComments(comments.slice(0, 2))
@@ -280,8 +284,16 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
               <div className="text-xs text-gray-500 mb-1">
                 {new Date(activity.created_at).toLocaleString()}
               </div>
-              <div className="font-semibold text-gray-900 mb-1">
-                {displayData.userName} {activity.attempt_type} {displayData.climbName}
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-gray-900">
+                  {displayData.userName} {activity.attempt_type} {displayData.climbName}
+                </span>
+                {((activity as FollowActivity | GymActivity).route_setter) && (
+                  <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-orange-400 to-red-500 text-white text-[10px] font-bold">
+                    <span>🧗</span>
+                    <span>Setter</span>
+                  </div>
+                )}
               </div>
               <div className="text-xs text-gray-600 flex items-center gap-1">
                 <span>{displayData.type}</span>
@@ -390,6 +402,12 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
                           <span className="font-semibold text-gray-900 text-sm">
                             {c.user_name || 'User'}
                           </span>
+                          {c.route_setter && (
+                            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-orange-400 to-red-500 text-white text-[10px] font-bold">
+                              <span>🧗</span>
+                              <span>Setter</span>
+                            </div>
+                          )}
                           <span className="text-xs text-gray-500">
                             {new Date(c.created_at).toLocaleString()}
                           </span>
@@ -411,7 +429,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
                 onClick={async () => {
                   const { data } = await supabase
                     .from('bumps')
-                    .select('comment, created_at, user:users(name, profile_photo)')
+                    .select('comment, created_at, user:users(name, profile_photo, route_setter)')
                     .eq('log_id', activity.id)
                     .not('comment', 'is', null)
                     .order('created_at', { ascending: false })
@@ -421,6 +439,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
                     profile_photo: r.user?.profile_photo ?? null,
                     comment: r.comment,
                     created_at: r.created_at,
+                    route_setter: r.user?.route_setter ?? false,
                   }))
                   
                   setLocalComments(allComments)

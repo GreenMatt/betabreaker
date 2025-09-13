@@ -72,7 +72,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
         const { data: vids } = await supabase.from('climb_videos').select('id,url,user_id').eq('climb_id', id).order('created_at', { ascending: false })
         setVideos(vids || [])
       } catch { setVideos([]) }
-      const { data: cm } = await supabase.from('climb_comments').select('id, user_id, parent_id, body, is_setter, created_at, user:users(name,profile_photo)').eq('climb_id', id).order('created_at', { ascending: true })
+      const { data: cm } = await supabase.from('climb_comments').select('id, user_id, parent_id, body, is_setter, created_at, user:users(name,profile_photo,route_setter)').eq('climb_id', id).order('created_at', { ascending: true })
       setComments(cm || [])
       // Load sends (flashed or sent) for this climb, earliest first
       const { data: sl } = await supabase
@@ -341,6 +341,12 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
                       <span className="font-semibold text-gray-900 text-sm">
                         {c.user?.name || 'User'}
                       </span>
+                      {c.user?.route_setter && (
+                        <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-orange-400 to-red-500 text-white text-[10px] font-bold">
+                          <span>🧗</span>
+                          <span>Setter</span>
+                        </div>
+                      )}
                       <span className="text-xs text-gray-500">
                         {new Date(c.created_at).toLocaleString()}
                       </span>
@@ -379,6 +385,12 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
                             <span className="font-semibold text-gray-900 text-sm">
                               {r.user?.name || 'User'}
                             </span>
+                            {r.user?.route_setter && (
+                              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-orange-400 to-red-500 text-white text-[10px] font-bold">
+                                <span>🧗</span>
+                                <span>Setter</span>
+                              </div>
+                            )}
                             <span className="text-xs text-gray-500">
                               {new Date(r.created_at).toLocaleString()}
                             </span>
