@@ -21,6 +21,9 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   const [editingName, setEditingName] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [following, setFollowing] = useState<Array<{ id: string, name: string | null, profile_photo: string | null }>>([])
+  const [followers, setFollowers] = useState<Array<{ id: string, name: string | null, profile_photo: string | null }>>([])
+  const [followTab, setFollowTab] = useState<'following' | 'followers'>('following')
 
   const isOwner = useMemo(() => {
     return !!viewerId && !!profile && viewerId === profile.id
@@ -42,6 +45,8 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         await Promise.all([
           loadProfile(targetId),
           loadBadges(targetId),
+          loadFollowing(targetId),
+          loadFollowers(targetId),
         ])
       } finally {
         setLoading(false)
@@ -70,6 +75,22 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       .select('badge:badges(id,name,icon,description)')
       .eq('user_id', userId)
     setBadges((data || []).map((r: any) => r.badge))
+  }
+
+  async function loadFollowing(userId: string) {
+    const { data } = await supabase
+      .from('follows')
+      .select('following_id, following:users!follows_following_id_fkey(id,name,profile_photo)')
+      .eq('follower_id', userId)
+    setFollowing((data || []).map((r: any) => r.following).filter(Boolean))
+  }
+
+  async function loadFollowers(userId: string) {
+    const { data } = await supabase
+      .from('follows')
+      .select('follower_id, follower:users!follows_follower_id_fkey(id,name,profile_photo)')
+      .eq('following_id', userId)
+    setFollowers((data || []).map((r: any) => r.follower).filter(Boolean))
   }
 
   function resolveIconUrl(icon: string | null): string {
@@ -171,6 +192,119 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         <h2 className="font-semibold mb-2">Auth</h2>
         <AuthButtons />
       </div>
+      {(following.length > 0 || followers.length > 0) && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold">Community</h2>
+            <div className="flex bg-white/10 rounded-lg p-1">
+              <button
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  followTab === 'following'
+                    ? 'bg-neon-purple text-white shadow-lg'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-white/10'
+                }`}
+                onClick={() => setFollowTab('following')}
+              >
+                Following ({following.length})
+              </button>
+              <button
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  followTab === 'followers'
+                    ? 'bg-neon-purple text-white shadow-lg'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-white/10'
+                }`}
+                onClick={() => setFollowTab('followers')}
+              >
+                Followers ({followers.length})
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {followTab === 'following' && following.length === 0 && (
+              <p className="text-base-subtext text-center py-8">Not following anyone yet</p>
+            )}
+            {followTab === 'followers' && followers.length === 0 && (
+              <p className="text-base-subtext text-center py-8">No followers yet</p>
+            )}
+            
+            {followTab === 'following' && following.map(user => (
+              <div key={user.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-gradient-to-r from-white/5 to-white/10 hover:from-purple-500/10 hover:to-blue-500/10 border border-white/10 hover:border-purple-400/30 transition-all duration-300">
+                {/* User Avatar */}
+                {user.profile_photo ? (
+                  <img 
+                    src={user.profile_photo} 
+                    alt={user.name || 'User'} 
+                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 ring-2 ring-transparent group-hover:ring-purple-400/40 transition-all duration-300"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center border-2 border-white/20 ring-2 ring-transparent group-hover:ring-purple-400/40 transition-all duration-300">
+                    <span className="text-white font-semibold">
+                      {(user.name || 'U')[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                
+                {/* User Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-800 group-hover:text-purple-700 transition-colors duration-200">
+                    {user.name || 'Climber'}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Following
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <Link 
+                  href={`/profile/${user.id}`}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-700 font-medium text-sm transition-all duration-200 hover:shadow-md"
+                >
+                  View Profile
+                </Link>
+              </div>
+            ))}
+
+            {followTab === 'followers' && followers.map(user => (
+              <div key={user.id} className="group flex items-center gap-4 p-3 rounded-2xl bg-gradient-to-r from-white/5 to-white/10 hover:from-purple-500/10 hover:to-blue-500/10 border border-white/10 hover:border-purple-400/30 transition-all duration-300">
+                {/* User Avatar */}
+                {user.profile_photo ? (
+                  <img 
+                    src={user.profile_photo} 
+                    alt={user.name || 'User'} 
+                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 ring-2 ring-transparent group-hover:ring-purple-400/40 transition-all duration-300"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center border-2 border-white/20 ring-2 ring-transparent group-hover:ring-purple-400/40 transition-all duration-300">
+                    <span className="text-white font-semibold">
+                      {(user.name || 'U')[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                
+                {/* User Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-800 group-hover:text-purple-700 transition-colors duration-200">
+                    {user.name || 'Climber'}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Follows you
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <Link 
+                  href={`/profile/${user.id}`}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-700 font-medium text-sm transition-all duration-200 hover:shadow-md"
+                >
+                  View Profile
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <h2 className="font-semibold mb-2">Badges</h2>
         {badges.length === 0 && <p className="text-base-subtext">No badges yet.</p>}

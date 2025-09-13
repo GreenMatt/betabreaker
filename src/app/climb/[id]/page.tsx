@@ -174,6 +174,61 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
       </div>
 
       <div className="card">
+        <h2 className="font-semibold mb-4">Route Setter Notes</h2>
+        <div className="space-y-4">
+          {comments.filter((x: any) => x.is_setter).length === 0 ? (
+            <p className="text-base-subtext text-sm">No setter notes yet.</p>
+          ) : (
+            comments.filter((x: any) => x.is_setter).map((s: any) => (
+              <div key={s.id} className="flex items-start gap-3 group/comment">
+                {/* Setter Avatar */}
+                {s.user?.profile_photo ? (
+                  <img 
+                    src={s.user.profile_photo} 
+                    alt="Route Setter" 
+                    className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center border border-gray-200 flex-shrink-0">
+                    <span className="text-white text-xs font-medium">
+                      {(s.user?.name || 'S')[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Setter Quote Bubble */}
+                <div className="flex-1 min-w-0">
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 backdrop-blur-sm rounded-2xl px-4 py-3 border border-orange-200 group-hover/comment:border-orange-300 transition-colors duration-200 relative">
+                    {/* Quote Icon */}
+                    <div className="absolute -top-1 -left-1 text-orange-400 text-2xl leading-none">"</div>
+                    <div className="flex items-center gap-2 mb-1 ml-4">
+                      <span className="font-semibold text-orange-900 text-sm">
+                        {s.user?.name || 'Route Setter'}
+                      </span>
+                      <span className="text-xs text-orange-600 font-medium">• Setter</span>
+                      <span className="text-xs text-orange-500">
+                        {new Date(s.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-orange-800 leading-relaxed break-words italic ml-4">
+                      {s.body}
+                    </p>
+                    {/* Closing Quote */}
+                    <div className="absolute -bottom-1 -right-1 text-orange-400 text-2xl leading-none rotate-180">"</div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+          {isAdmin && (
+            <div className="pt-4 border-t border-orange-200">
+              <CommentBox onSubmit={(v) => addComment(v, undefined, true)} placeholder="Add setter note..." />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card">
         <h2 className="font-semibold mb-2">Videos</h2>
         <VideoAddForm
           onAdd={async (url) => {
@@ -341,15 +396,6 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
         </div>
       </div>
 
-      <div className="card">
-        <h2 className="font-semibold mb-2">Route Setter Notes</h2>
-        <div className="grid gap-2">
-          {comments.filter((x: any) => x.is_setter).map((s: any) => (
-            <div key={s.id} className="text-sm"><span className="font-medium">{s.user?.name || 'Setter'}</span>: {s.body}</div>
-          ))}
-          {isAdmin && <CommentBox onSubmit={(v) => addComment(v, undefined, true)} placeholder="Add setter note" />}
-        </div>
-      </div>
 
       {showLog && climb && (
         <SendLogModal climbId={climb.id} onClose={() => setShowLog(false)} />

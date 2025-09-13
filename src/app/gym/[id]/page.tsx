@@ -29,7 +29,6 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
   const [activityLoading, setActivityLoading] = useState(false)
   const [activityPage, setActivityPage] = useState(0)
   const [activityHasMore, setActivityHasMore] = useState(true)
-  const [followingUsers, setFollowingUsers] = useState<Array<{ id: string, name: string | null, profile_photo: string | null }>>([])
   const [viewTab, setViewTab] = useState<'active'|'removed'>('active')
   const [climbsPage, setClimbsPage] = useState(0)
   const [climbsLoading, setClimbsLoading] = useState(false)
@@ -178,9 +177,8 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
           setClaimed(false) 
         }
         if (!sRes.error) setSections(sRes.data || [])
-        // Load recent activity and following (non-blocking)
+        // Load recent activity (non-blocking)
         loadActivity().catch(() => {})
-        loadFollowing().catch(() => {})
         setClimbsPage(0)
         setClimbsHasMore(climbs.length === 12)
         setLoading(false)
@@ -308,17 +306,6 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
     setClimbsLoading(false)
   }
 
-  async function loadFollowing() {
-    const supabase = await getSupabase()
-    const { data: uidRes } = await supabase.auth.getUser()
-    const me = uidRes.user?.id
-    if (!me) { setFollowingUsers([]); return }
-    const { data: rows } = await supabase.from('follows').select('following_id').eq('follower_id', me)
-    const ids = (rows || []).map((r: any) => r.following_id)
-    if (ids.length === 0) { setFollowingUsers([]); return }
-    const { data: users } = await supabase.from('users').select('id,name,profile_photo').in('id', ids)
-    setFollowingUsers(users || [])
-  }
 
   const [form, setForm] = useState({ name: '', type: 'boulder' as 'boulder' | 'top_rope' | 'lead', grade: 5, location: '', setter: '', color: 'blue', dyno: false, section_id: '', active_status: true })
   const canCreate = isAdmin && !loading
@@ -616,16 +603,6 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {followingUsers.length > 0 && (
-        <div className="card mt-4">
-          <h2 className="font-semibold mb-2">You follow</h2>
-          <div className="flex flex-wrap gap-2">
-            {followingUsers.map(u => (
-              <span key={u.id} className="px-2 py-1 rounded-full bg-white/10 text-sm">{u.name || 'User'}</span>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
 
       {lightbox && (
