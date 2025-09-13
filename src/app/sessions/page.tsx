@@ -89,7 +89,7 @@ export default function SessionsPage() {
   const { user } = useAuth()
   const [items, setItems] = useState<Session[]>([])
   const [loading, setLoading] = useState(false)
-  const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0,10))
+  const [date, setDate] = useState<string>(() => toLocalYMD(new Date()))
   const [activity, setActivity] = useState<Session['activity_type']>('Climb')
   const [duration, setDuration] = useState<string>('60')
   const [notes, setNotes] = useState('')
@@ -103,6 +103,9 @@ export default function SessionsPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<Partial<Session>>({})
+  const [sessionsPage, setSessionsPage] = useState(0)
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [sessionsHasMore, setSessionsHasMore] = useState(true)
 
   const grouped = useMemo(() => {
     const m = new Map<string, Session[]>()
@@ -129,9 +132,12 @@ export default function SessionsPage() {
           .eq('user_id', user.id)
           .gte('date', monthStartYMD)
           .lte('date', monthEndYMD)
-          .order('date', { ascending: true })
+          .order('date', { ascending: false })
+          .limit(5)
         if (error) throw error
         setItems((data || []) as any)
+        setSessionsPage(0)
+        setSessionsHasMore((data || []).length === 5)
       } finally {
         setLoading(false)
       }
@@ -149,11 +155,37 @@ export default function SessionsPage() {
         .select('id, date, duration_mins, activity_type, notes')
         .single()
       if (error) throw error
-      setItems(prev => [...prev, data as any])
+      setItems(prev => [data as any, ...prev])
       // reset note
       setNotes('')
     } catch (e: any) {
       alert(e?.message || 'Failed to add session')
+    }
+  }
+
+  async function loadMoreSessions() {
+    setSessionsLoading(true)
+    try {
+      const monthStartYMD = toLocalYMD(new Date(viewYear, viewMonth, 1))
+      const monthEndYMD = toLocalYMD(new Date(viewYear, viewMonth + 1, 0))
+      const pageSize = 5
+      const offset = (sessionsPage + 1) * pageSize
+      const { data, error } = await supabase
+        .from('training_sessions')
+        .select('id, date, duration_mins, activity_type, notes')
+        .eq('user_id', user.id)
+        .gte('date', monthStartYMD)
+        .lte('date', monthEndYMD)
+        .order('date', { ascending: false })
+        .range(offset, offset + pageSize - 1)
+      
+      if (!error && data) {
+        setItems(prev => [...prev, ...data as any[]])
+        setSessionsPage(prev => prev + 1)
+        setSessionsHasMore(data.length === pageSize)
+      }
+    } finally {
+      setSessionsLoading(false)
     }
   }
 
@@ -457,6 +489,17 @@ export default function SessionsPage() {
                 </div>
               )
             })}
+            {sessionsHasMore && (
+              <div className="flex justify-center mt-4">
+                <button 
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors" 
+                  disabled={sessionsLoading} 
+                  onClick={loadMoreSessions}
+                >
+                  {sessionsLoading ? 'Loading more sessions…' : 'Load more sessions'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
