@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient'
+import { shouldShowBadgePopup } from './popupDedup'
 
 type Badge = {
   id: string
@@ -319,28 +320,49 @@ function meetsCriteria(stats: UserStats, criteria: any): boolean {
   return true
 }
 
+// Re-entrancy guard to prevent multiple simultaneous badge checks for the same user
+const activeChecks = new Set<string>()
+
 // Helper function to trigger badge check after important actions
 export async function triggerBadgeCheck(userId: string, awardCallback: (badges: Badge[]) => void) {
-  console.log('🚀 Triggering badge check for user:', userId)
-  const newBadges = await checkAndAwardBadges(userId)
-  console.log('🎁 Badge check result:', newBadges)
+  // Re-entrancy guard
+  if (activeChecks.has(userId)) {
+    console.log('⏳ Badge check already in progress for user:', userId)
+    return
+  }
 
-  // Double-check deduplication by ID (prevent duplicate popups)
-  const badgeMap = new Map<string, Badge>()
-  newBadges.forEach(badge => {
-    if (!badgeMap.has(badge.id)) {
-      badgeMap.set(badge.id, badge)
-    }
-  })
-  const uniqueBadges = Array.from(badgeMap.values())
+  activeChecks.add(userId)
 
-  if (uniqueBadges.length > 0) {
-    console.log('🎉 Calling award callback with unique badges:', uniqueBadges.map(b => b.name))
-    // Award each badge individually to ensure one popup per unique badge
-    uniqueBadges.forEach(badge => {
-      awardCallback([badge])
+  try {
+    console.log('🚀 Triggering badge check for user:', userId)
+    const newBadges = await checkAndAwardBadges(userId)
+    console.log('🎁 Badge check result:', newBadges)
+
+    // Triple-check deduplication by ID (prevent duplicate popups)
+    const badgeMap = new Map<string, Badge>()
+    newBadges.forEach(badge => {
+      if (!badgeMap.has(badge.id)) {
+        badgeMap.set(badge.id, badge)
+      }
     })
-  } else {
-    console.log('📭 No new badges to award')
+    const uniqueBadges = Array.from(badgeMap.values())
+
+    if (uniqueBadges.length > 0) {
+      console.log('🎉 Calling award callback with unique badges:', uniqueBadges.map(b => b.name))
+
+      // Filter badges that should show popups (dedup check)
+      const badgesToShow = uniqueBadges.filter(badge => shouldShowBadgePopup(badge.id))
+
+      if (badgesToShow.length > 0) {
+        console.log('🎊 Showing popups for badges:', badgesToShow.map(b => b.name))
+        awardCallback(badgesToShow)
+      } else {
+        console.log('🚫 All badges filtered out by popup deduplicator')
+      }
+    } else {
+      console.log('📭 No new badges to award')
+    }
+  } finally {
+    activeChecks.delete(userId)
   }
 }

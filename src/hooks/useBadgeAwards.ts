@@ -14,14 +14,26 @@ export function useBadgeAwards() {
   const [isPopupVisible, setIsPopupVisible] = useState(false)
 
   const awardBadge = useCallback((badge: Badge) => {
-    setPendingBadges(prev => [...prev, badge])
-    
+    // Dedup check to prevent duplicate popups for the same badge
+    setPendingBadges(prev => {
+      // Check if this badge is already in pending or currently showing
+      const alreadyPending = prev.some(b => b.id === badge.id)
+      const currentlyShowing = currentBadge?.id === badge.id && isPopupVisible
+
+      if (alreadyPending || currentlyShowing) {
+        console.log('🚫 Badge already pending or showing:', badge.name)
+        return prev
+      }
+
+      return [...prev, badge]
+    })
+
     // If no popup is currently showing, show this one immediately
     if (!isPopupVisible) {
       setCurrentBadge(badge)
       setIsPopupVisible(true)
     }
-  }, [isPopupVisible])
+  }, [isPopupVisible, currentBadge])
 
   const closePopup = useCallback(() => {
     setIsPopupVisible(false)
@@ -44,7 +56,17 @@ export function useBadgeAwards() {
   }, [])
 
   const awardMultipleBadges = useCallback((badges: Badge[]) => {
-    badges.forEach(badge => awardBadge(badge))
+    // Deduplicate badges by ID before processing
+    const badgeMap = new Map<string, Badge>()
+    badges.forEach(badge => {
+      if (!badgeMap.has(badge.id)) {
+        badgeMap.set(badge.id, badge)
+      }
+    })
+    const uniqueBadges = Array.from(badgeMap.values())
+
+    console.log('🎁 Awarding multiple badges:', uniqueBadges.map(b => b.name))
+    uniqueBadges.forEach(badge => awardBadge(badge))
   }, [awardBadge])
 
   return {
