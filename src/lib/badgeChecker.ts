@@ -143,10 +143,10 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
 
         // Grade/level milestones - handle both formats
         if (pb.type === 'grade_milestone') {
-          // New format: {type: 'level', level: X} - only award the exact grade achieved
-          if (criteria.type === 'level' && criteria.level && criteria.level === recentGrade) return true
-          // Legacy format: {highestGrade: X} - only award the exact grade achieved
-          if (criteria.highestGrade && criteria.highestGrade === recentGrade) return true
+          // New format: {type: 'level', level: X}
+          if (criteria.type === 'level' && criteria.level && criteria.level <= recentGrade) return true
+          // Legacy format: {highestGrade: X}
+          if (criteria.highestGrade && criteria.highestGrade <= recentGrade) return true
         }
 
         // Flash achievements
@@ -167,17 +167,29 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
         const meetsCrit = meetsCriteria(stats, badge.criteria)
         console.log('✅ Criteria check:', { badgeName: badge.name, meetsCrit, userStats: stats, badgeCriteria: badge.criteria })
 
+        // Additional check: only award grade badges that match the EXACT new achievement
         if (meetsCrit) {
-          console.log('🏆 Awarding badge:', badge.name)
-          newBadges.push(badge)
+          let shouldAward = true
 
-          // Award the badge in database
-          await supabase
-            .from('user_badges')
-            .insert({
-              user_id: userId,
-              badge_id: badge.id
-            })
+          // For level badges, only award if it matches the exact new grade achieved
+          if (badge.criteria.type === 'level') {
+            shouldAward = badge.criteria.level === recentGrade
+          }
+
+          console.log('🎯 Final award check:', { badgeName: badge.name, shouldAward, badgeLevel: badge.criteria.level, recentGrade })
+
+          if (shouldAward) {
+            console.log('🏆 Awarding badge:', badge.name)
+            newBadges.push(badge)
+
+            // Award the badge in database
+            await supabase
+              .from('user_badges')
+              .insert({
+                user_id: userId,
+                badge_id: badge.id
+              })
+          }
         }
       }
     }
