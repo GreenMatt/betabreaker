@@ -1,6 +1,7 @@
 "use client"
 import Link from 'next/link'
 import { AuthProvider } from '@/lib/authContext'
+import { BadgeAwardProvider } from '@/contexts/BadgeAwardContext'
 import RouteGuard from '@/components/RouteGuard'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import UserNav from '@/components/UserNav'
@@ -11,10 +12,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthProvider>
-      <Stabilizer />
-      <RouteGuard>
-        <ErrorBoundary>
-        <div className="max-w-screen-md mx-auto px-4 pb-24">
+      <BadgeAwardProvider>
+        <Stabilizer />
+        <RouteGuard>
+          <ErrorBoundary>
+          <div className="max-w-screen-md mx-auto px-4 pb-24">
           <header className="sticky top-0 z-20 backdrop-blur bg-base-bg/70 border-b border-black/10">
             <div className="flex items-center gap-3 py-3 flex-wrap justify-between">
               <Link href="/" className="flex items-center gap-2">
@@ -35,6 +37,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         </ErrorBoundary>
       </RouteGuard>
+      </BadgeAwardProvider>
     </AuthProvider>
   )
 }

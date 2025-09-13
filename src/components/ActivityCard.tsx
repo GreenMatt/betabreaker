@@ -221,6 +221,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
           userName: 'You',
           userPhoto: null,
           climbName: own.climb.name,
+          climbId: activity.climb_id || '',
           gymName: own.climb.gym.name,
           grade: own.climb.grade,
           type: own.climb.type,
@@ -233,6 +234,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
           userName: follow.user_name || 'Climber',
           userPhoto: follow.profile_photo,
           climbName: follow.climb_name,
+          climbId: activity.climb_id || '',
           gymName: follow.gym_name,
           grade: follow.grade,
           type: follow.type,
@@ -245,6 +247,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
           userName: gym.user_name || 'Climber',
           userPhoto: gym.profile_photo,
           climbName: gym.climb_name,
+          climbId: activity.climb_id || '',
           gymName: gym.gym_name,
           grade: gym.grade,
           type: gym.type,
@@ -284,9 +287,22 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
               <div className="text-xs text-gray-500 mb-1">
                 {new Date(activity.created_at).toLocaleString()}
               </div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="font-semibold text-gray-900">
-                  {displayData.userName} {activity.attempt_type} {displayData.climbName}
+                  {displayData.userName} {activity.attempt_type}{' '}
+                  {displayData.climbId ? (
+                    <Link 
+                      href={`/climb/${displayData.climbId}`}
+                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50 px-2 py-1 rounded-lg transition-all duration-200 font-semibold group"
+                    >
+                      <span>{displayData.climbName}</span>
+                      <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </Link>
+                  ) : (
+                    <span>{displayData.climbName}</span>
+                  )}
                 </span>
                 {((activity as FollowActivity | GymActivity).route_setter) && (
                   <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-orange-400 to-red-500 text-white text-[10px] font-bold">

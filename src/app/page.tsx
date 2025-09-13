@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/authContext'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import BadgeTestButton from '@/components/BadgeTestButton'
 
 type Stats = { climbs: number; highest: number; badges: number; fas: number }
 type Badge = { id: string; name: string; icon: string | null; description: string | null }
@@ -132,6 +133,8 @@ export default function Page() {
           <Link className="btn-primary" href="/feed">Open Feed</Link>
         </div>
       </section>
+
+      <BadgeTestButton />
 
       <section className="card">
         <h2 className="font-semibold mb-2">Available Badges</h2>

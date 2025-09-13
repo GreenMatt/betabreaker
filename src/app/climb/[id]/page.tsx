@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { VideoAddForm, VideoPreview, isSupportedVideoUrl } from './VideoEmbed'
 import { useSearchParams } from 'next/navigation'
+import { useBadgeAwardContext } from '@/contexts/BadgeAwardContext'
+import { triggerBadgeCheck } from '@/lib/badgeChecker'
 const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
 type Climb = { id: string; name: string; grade: number | null; type: 'boulder'|'top_rope'|'lead'; color: string | null; dyno: boolean | null; gym: { id: string, name: string }; community_grade?: number | null }
@@ -469,6 +471,7 @@ function CommentBox({ onSubmit, placeholder, compact }: { onSubmit: (v: string) 
 }
 
 function SendLogModal({ climbId, onClose }: { climbId: string, onClose: () => void }) {
+  const { awardMultipleBadges } = useBadgeAwardContext()
   const [attempt, setAttempt] = useState<'flashed'|'sent'|'projected'>('sent')
   const [attempts, setAttempts] = useState(1)
   const [rating, setRating] = useState<1|2|3|4|5>(3)
@@ -486,6 +489,10 @@ function SendLogModal({ climbId, onClose }: { climbId: string, onClose: () => vo
       if (grade) {
         await supabase.from('community_ratings').upsert({ user_id: uid, climb_id: climbId, rating: grade }, { onConflict: 'user_id,climb_id' })
       }
+      
+      // Check for new badges after successful climb log
+      await triggerBadgeCheck(uid, awardMultipleBadges)
+      
       onClose()
       alert('Logged!')
     } catch (err: any) { alert(err?.message || 'Failed') } finally { setBusy(false) }
