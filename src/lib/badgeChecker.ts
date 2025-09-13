@@ -315,9 +315,15 @@ export async function triggerBadgeCheck(userId: string, awardCallback: (badges: 
   console.log('🚀 Triggering badge check for user:', userId)
   const newBadges = await checkAndAwardBadges(userId)
   console.log('🎁 Badge check result:', newBadges)
-  if (newBadges.length > 0) {
-    console.log('🎉 Calling award callback with badges:', newBadges.map(b => b.name))
-    awardCallback(newBadges)
+
+  // Deduplicate badges by ID (prevent duplicate popups)
+  const uniqueBadges = newBadges.filter((badge, index, array) =>
+    array.findIndex(b => b.id === badge.id) === index
+  )
+
+  if (uniqueBadges.length > 0) {
+    console.log('🎉 Calling award callback with badges:', uniqueBadges.map(b => b.name))
+    awardCallback(uniqueBadges)
   } else {
     console.log('📭 No new badges to award')
   }
