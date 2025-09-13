@@ -287,7 +287,7 @@ export default function LeaderboardsPage() {
     switch (type) {
       case 'points': return value.toLocaleString()
       case 'sends': return value.toString()
-      case 'grade': return `V${value}`
+      case 'grade': return value.toString()
       case 'active': return `${value} days`
       default: return value.toString()
     }
@@ -437,7 +437,7 @@ export default function LeaderboardsPage() {
                     <div className={`text-2xl font-bold ${leader.rank === 1 ? 'text-yellow-400' : leader.rank === 2 ? 'text-gray-300' : leader.rank === 3 ? 'text-amber-500' : 'text-white'}`}>
                       {formatValue(leader.value, activeType)}
                     </div>
-                    <div className="text-xs text-base-subtext">
+                    <div className="text-xs text-gray-800">
                       {activeType === 'points' && 'points'}
                       {activeType === 'sends' && 'sends'}
                       {activeType === 'grade' && 'max grade'}
