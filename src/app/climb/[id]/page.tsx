@@ -5,7 +5,7 @@ import { VideoAddForm, VideoPreview, isSupportedVideoUrl } from './VideoEmbed'
 import { useSearchParams } from 'next/navigation'
 const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
-type Climb = { id: string; name: string; grade: number | null; type: 'boulder'|'top_rope'|'lead'; color: string | null; dyno: boolean | null; gym: { id: string, name: string } }
+type Climb = { id: string; name: string; grade: number | null; type: 'boulder'|'top_rope'|'lead'; color: string | null; dyno: boolean | null; gym: { id: string, name: string }; community_grade?: number | null }
 
 export default function ClimbDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
@@ -30,6 +30,25 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
         .maybeSingle()
       if (!mounted) return
       setClimb(c as any)
+      
+      // Load community rating for this climb
+      if (c) {
+        try {
+          const { data: ratings } = await supabase
+            .from('community_ratings')
+            .select('rating')
+            .eq('climb_id', id)
+          
+          if (ratings && ratings.length > 0) {
+            const avg = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+            const communityGrade = Math.round(avg * 10) / 10
+            setClimb(prev => prev ? { ...prev, community_grade: communityGrade } : prev)
+          }
+        } catch (e) {
+          console.error('Failed to load community rating:', e)
+        }
+      }
+      
       if ((c as any)?.gym?.id) {
         const { data: ok } = await supabase.rpc('is_gym_admin', { gid: (c as any).gym.id })
         setIsAdmin(!!ok)
@@ -117,7 +136,13 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
       </div>
       <div className="card">
         <h1 className="text-xl font-bold">{climb?.name || 'Climb'} {climb?.color ? (<span className="inline">{'\u2022'} {climb.color}</span>) : ''}</h1>
-        <div className="text-sm text-base-subtext">{climb?.type} <span>{'\u2022'}</span> Grade {climb?.grade ?? '-'} <span>{'\u2022'}</span> {climb?.gym?.name}</div>
+        <div className="text-sm text-base-subtext">
+          {climb?.type} <span>{'\u2022'}</span> Grade {climb?.grade ?? '-'} 
+          {climb?.community_grade && (
+            <span className="text-neon-purple"> <span>{'\u2022'}</span> Community: {climb.community_grade}</span>
+          )}
+          <span> {'\u2022'} </span> {climb?.gym?.name}
+        </div>
         <div className="mt-3">
           <button className="btn-primary" onClick={() => setShowLog(true)}>Log this climb</button>
         </div>

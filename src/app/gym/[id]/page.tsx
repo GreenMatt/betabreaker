@@ -7,7 +7,7 @@ import ActivityCard from '@/components/ActivityCard'
 const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
 type Gym = { id: string; name: string; location: string | null }
-type Climb = { id: string; name: string; grade: number | null; type: 'boulder' | 'top_rope' | 'lead'; location: string | null; setter: string | null; color: string | null; dyno: boolean | null; section_id: string | null; section?: { name: string } | null }
+type Climb = { id: string; name: string; grade: number | null; type: 'boulder' | 'top_rope' | 'lead'; location: string | null; setter: string | null; color: string | null; dyno: boolean | null; section_id: string | null; section?: { name: string } | null; community_grade?: number | null }
 type Section = { id: string; name: string }
 type Photo = { id: string; climb_id: string; image_base64: string | null; created_at?: string }
 
@@ -75,6 +75,44 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
         }))
         setClimbs(list)
         const ids = list.map((x: any) => x.id)
+        
+        // Load community ratings for climbs
+        if (ids.length) {
+          try {
+            const { data: ratings } = await supabase
+              .from('community_ratings')
+              .select('climb_id, rating')
+              .in('climb_id', ids)
+            
+            if (ratings) {
+              const avgRatings: Record<string, number> = {}
+              const ratingCounts: Record<string, number> = {}
+              
+              for (const r of ratings) {
+                const cid = r.climb_id
+                if (!avgRatings[cid]) {
+                  avgRatings[cid] = 0
+                  ratingCounts[cid] = 0
+                }
+                avgRatings[cid] += r.rating
+                ratingCounts[cid] += 1
+              }
+              
+              // Calculate averages and update climbs
+              for (const cid in avgRatings) {
+                avgRatings[cid] = Math.round((avgRatings[cid] / ratingCounts[cid]) * 10) / 10
+              }
+              
+              setClimbs(prev => prev.map(climb => ({
+                ...climb,
+                community_grade: avgRatings[climb.id] || null
+              })))
+            }
+          } catch (e) {
+            console.error('Failed to load community ratings:', e)
+          }
+        }
+        
         if (ids.length) {
           try {
             const { data: photos, error: photoError } = await supabase
@@ -209,8 +247,46 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       setClimbsPage(prev => prev + 1)
       setClimbsHasMore(normalized.length === pageSize)
       
-      // Load previews for new climbs
+      // Load community ratings for new climbs
       const newIds = normalized.map(x => x.id)
+      if (newIds.length) {
+        try {
+          const { data: ratings } = await supabase
+            .from('community_ratings')
+            .select('climb_id, rating')
+            .in('climb_id', newIds)
+          
+          if (ratings) {
+            const avgRatings: Record<string, number> = {}
+            const ratingCounts: Record<string, number> = {}
+            
+            for (const r of ratings) {
+              const cid = r.climb_id
+              if (!avgRatings[cid]) {
+                avgRatings[cid] = 0
+                ratingCounts[cid] = 0
+              }
+              avgRatings[cid] += r.rating
+              ratingCounts[cid] += 1
+            }
+            
+            // Calculate averages and update new climbs
+            for (const cid in avgRatings) {
+              avgRatings[cid] = Math.round((avgRatings[cid] / ratingCounts[cid]) * 10) / 10
+            }
+            
+            setClimbs(prev => prev.map(climb => 
+              newIds.includes(climb.id) 
+                ? { ...climb, community_grade: avgRatings[climb.id] || null }
+                : climb
+            ))
+          }
+        } catch (e) {
+          console.error('Failed to load community ratings for new climbs:', e)
+        }
+      }
+      
+      // Load previews for new climbs
       if (newIds.length) {
         const { data: photos } = await supabase
           .from('climb_photos')
@@ -496,7 +572,13 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
                 )}
                 {c.dyno ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10">Dyno</span> : null}
               </div>
-              <div className="mt-1 text-xs text-base-subtext">{c.type} • Grade {c.grade ?? '-'} {c.section?.name ? `• ${c.section.name}` : c.location ? `• ${c.location}` : ''}</div>
+              <div className="mt-1 text-xs text-base-subtext">
+                {c.type} • Grade {c.grade ?? '-'} 
+                {c.community_grade && (
+                  <span className="text-neon-purple"> • Community: {c.community_grade}</span>
+                )}
+                {c.section?.name ? ` • ${c.section.name}` : c.location ? ` • ${c.location}` : ''}
+              </div>
             </div>
             {isAdmin && (
               <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition">
