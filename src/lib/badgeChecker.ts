@@ -137,11 +137,27 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
       // Only check badges that are relevant to recent activity
       const isRelevant = potentialBadges.some(pb => {
         const criteria = badge.criteria || {}
-        if (pb.type === 'first_send' && criteria.climbCount === 1) return true
-        if (pb.type === 'grade_milestone' && criteria.highestGrade && criteria.highestGrade <= recentGrade) return true
+
+        // First send badge
+        if (pb.type === 'first_send' && criteria.type === 'first_send') return true
+
+        // Grade/level milestones - handle both formats
+        if (pb.type === 'grade_milestone') {
+          // New format: {type: 'level', level: X}
+          if (criteria.type === 'level' && criteria.level && criteria.level <= recentGrade) return true
+          // Legacy format: {highestGrade: X}
+          if (criteria.highestGrade && criteria.highestGrade <= recentGrade) return true
+        }
+
+        // Flash achievements
         if (pb.type === 'flash_achievement' && wasFlash && criteria.flashCount) return true
+
+        // Climb count milestones
         if (pb.type === 'climb_milestone' && criteria.climbCount === stats.climbCount) return true
+
+        // Points milestones
         if (pb.type === 'points_milestone' && criteria.totalPoints === pointsMilestone) return true
+
         return false
       })
 
@@ -259,7 +275,19 @@ async function getUserStats(userId: string): Promise<UserStats> {
 function meetsCriteria(stats: UserStats, criteria: any): boolean {
   if (!criteria || typeof criteria !== 'object') return false
 
-  // Example criteria checks
+  // Handle different badge criteria formats
+
+  // First send badge
+  if (criteria.type === 'first_send') {
+    return stats.climbCount >= 1
+  }
+
+  // Level/grade badges - handle both formats
+  if (criteria.type === 'level' && criteria.level) {
+    return stats.highestGrade >= criteria.level
+  }
+
+  // Legacy format support
   if (criteria.climbCount && stats.climbCount < criteria.climbCount) return false
   if (criteria.highestGrade && stats.highestGrade < criteria.highestGrade) return false
   if (criteria.flashCount && stats.flashCount < criteria.flashCount) return false
