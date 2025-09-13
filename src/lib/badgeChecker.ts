@@ -103,6 +103,7 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
 
     console.log('🎖️ Potential badges to check:', potentialBadges)
     console.log('👤 User already has these badge IDs:', Array.from(earnedBadgeIds))
+    console.log('🧗‍♂️ Recent grade info:', { recentGrade, previousHighestGrade, wasFlash, statsClimbCount: stats.climbCount })
 
     // Now get actual badges from database that match our potential achievements
     const { data: allBadges } = await supabase
@@ -115,8 +116,9 @@ export async function checkAndAwardBadges(userId: string): Promise<Badge[]> {
     }
 
     console.log('💾 Available badges in database:', allBadges.length)
+    console.log('🗃️ All badges:', allBadges)
     const newBadges: Badge[] = []
-    
+
     for (const badge of allBadges) {
       console.log('🔍 Checking badge:', badge.name, 'with criteria:', badge.criteria)
 
