@@ -100,7 +100,6 @@ export default function Page() {
         <div className="mt-4 flex gap-3">
           <Link className="btn-primary" href="/log">Quick Log</Link>
           <Link className="btn-primary" href="/gym">Browse Gyms</Link>
-          <button className="btn-primary" onClick={handleRefresh}>Refresh Data</button>
         </div>
       </section>
 
