@@ -245,20 +245,99 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
       </div>
 
       <div className="card">
-        <h2 className="font-semibold mb-2">Comments</h2>
-        <CommentBox onSubmit={(v) => addComment(v)} placeholder="Write a comment" />
-        <div className="mt-3 grid gap-3">
+        <h2 className="font-semibold mb-4">Comments</h2>
+        <div className="space-y-4">
+          {/* Comments List */}
           {(threads['root'] || []).map((c: any) => (
-            <div key={c.id} className="border-t border-black/10 pt-2">
-              <div className="text-sm"><span className="font-medium">{c.user?.name || 'User'}</span>: {c.body}</div>
-              <div className="mt-1 ml-3 grid gap-2">
-                {(threads[c.id] || []).map((r: any) => (
-                  <div key={r.id} className="text-sm"><span className="font-medium">{r.user?.name || 'User'}</span>: {r.body}</div>
-                ))}
-                <CommentBox onSubmit={(v) => addComment(v, c.id)} placeholder="Reply" compact />
+            <div key={c.id} className="space-y-3">
+              {/* Main Comment */}
+              <div className="flex items-start gap-3 group/comment">
+                {/* Comment Avatar */}
+                {c.user?.profile_photo ? (
+                  <img 
+                    src={c.user.profile_photo} 
+                    alt="Profile" 
+                    className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center border border-gray-200 flex-shrink-0">
+                    <span className="text-white text-xs font-medium">
+                      {(c.user?.name || 'U')[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Comment Bubble */}
+                <div className="flex-1 min-w-0">
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 backdrop-blur-sm rounded-2xl px-4 py-3 border border-gray-200 group-hover/comment:border-purple-300 transition-colors duration-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-gray-900 text-sm">
+                        {c.user?.name || 'User'}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(c.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 leading-relaxed break-words">
+                      {c.body}
+                    </p>
+                  </div>
+                </div>
               </div>
+
+              {/* Replies */}
+              {(threads[c.id] || []).length > 0 && (
+                <div className="ml-6 space-y-3 border-l border-gray-200 pl-4">
+                  {(threads[c.id] || []).map((r: any) => (
+                    <div key={r.id} className="flex items-start gap-3 group/comment">
+                      {/* Reply Avatar */}
+                      {r.user?.profile_photo ? (
+                        <img 
+                          src={r.user.profile_photo} 
+                          alt="Profile" 
+                          className="w-7 h-7 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center border border-gray-200 flex-shrink-0">
+                          <span className="text-white text-xs font-medium">
+                            {(r.user?.name || 'U')[0].toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Reply Bubble */}
+                      <div className="flex-1 min-w-0">
+                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 backdrop-blur-sm rounded-2xl px-4 py-3 border border-gray-200 group-hover/comment:border-purple-300 transition-colors duration-200">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-gray-900 text-sm">
+                              {r.user?.name || 'User'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(r.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 leading-relaxed break-words">
+                            {r.body}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <CommentBox onSubmit={(v) => addComment(v, c.id)} placeholder="Reply..." compact />
+                </div>
+              )}
+              {(threads[c.id] || []).length === 0 && (
+                <div className="ml-6 border-l border-gray-200 pl-4">
+                  <CommentBox onSubmit={(v) => addComment(v, c.id)} placeholder="Reply..." compact />
+                </div>
+              )}
             </div>
           ))}
+
+          {/* Add New Comment */}
+          <div className="pt-4 border-t border-gray-200">
+            <CommentBox onSubmit={(v) => addComment(v)} placeholder="Write a comment..." />
+          </div>
         </div>
       </div>
 
@@ -282,9 +361,39 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
 function CommentBox({ onSubmit, placeholder, compact }: { onSubmit: (v: string) => void, placeholder: string, compact?: boolean }) {
   const [v, setV] = useState('')
   return (
-    <div className={`flex items-center gap-2 ${compact ? '' : 'mt-2'}`}>
-      <input className="input flex-1" placeholder={placeholder} value={v} onChange={e => setV(e.target.value)} />
-      <button className="btn-primary" onClick={() => { if (v.trim()) { onSubmit(v.trim()); setV('') } }}>Send</button>
+    <div className={`flex items-center gap-3 ${compact ? 'pt-2' : ''}`}>
+      <div className="flex-1 relative">
+        <input 
+          className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-transparent transition-all duration-200"
+          placeholder={placeholder}
+          value={v}
+          onChange={e => setV(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && v.trim()) {
+              onSubmit(v.trim())
+              setV('')
+            }
+          }}
+        />
+      </div>
+      <button 
+        className={`px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+          v.trim() 
+            ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40' 
+            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+        }`}
+        onClick={() => { 
+          if (v.trim()) { 
+            onSubmit(v.trim())
+            setV('') 
+          } 
+        }}
+        disabled={!v.trim()}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+        </svg>
+      </button>
     </div>
   )
 }

@@ -134,7 +134,8 @@ export default function Page() {
       </section>
 
       <section className="card">
-        <h2 className="font-semibold mb-2">All Badges</h2>
+        <h2 className="font-semibold mb-2">Available Badges</h2>
+        <p className="text-base-subtext mb-3">🏆 Collect them all by completing challenges and hitting milestones!</p>
         {allBadges.length === 0 && <p className="text-base-subtext">No badges defined yet.</p>}
         {allBadges.length > 0 && (
           <div className="grid grid-cols-4 gap-4">
