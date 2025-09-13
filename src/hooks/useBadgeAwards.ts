@@ -23,7 +23,7 @@ export function useBadgeAwards() {
       return
     }
 
-    // Add to pending queue
+    // Use functional state updates to handle async state correctly
     setPendingBadges(prev => {
       const alreadyPending = prev.some(b => b.id === badge.id)
 
@@ -33,17 +33,22 @@ export function useBadgeAwards() {
       }
 
       console.log('✅ Adding badge to pending queue:', badge.name)
-      return [...prev, badge]
-    })
+      const newPending = [...prev, badge]
 
-    // If no popup is currently showing, show this one immediately
-    if (!isPopupVisible) {
-      console.log('✅ No popup showing, displaying immediately:', badge.name)
-      setCurrentBadge(badge)
-      setIsPopupVisible(true)
-    } else {
-      console.log('⏳ Popup already showing, badge queued:', badge.name)
-    }
+      // Check if we should show immediately (no current badge showing)
+      if (prev.length === 0 && !currentBadge && !isPopupVisible) {
+        console.log('✅ Queue was empty, displaying immediately:', badge.name)
+        // Use setTimeout to ensure state updates don't conflict
+        setTimeout(() => {
+          setCurrentBadge(badge)
+          setIsPopupVisible(true)
+        }, 0)
+      } else {
+        console.log('⏳ Popup busy or queue not empty, badge queued:', badge.name)
+      }
+
+      return newPending
+    })
   }, [isPopupVisible, currentBadge])
 
   const closePopup = useCallback(() => {
