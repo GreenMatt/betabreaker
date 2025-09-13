@@ -17,6 +17,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
   const [comments, setComments] = useState<any[]>([])
   const [sends, setSends] = useState<Array<{ user_id: string, user_name: string | null, date: string, attempt_type: 'flashed'|'sent', fa?: boolean }>>([])
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isRouteSetter, setIsRouteSetter] = useState(false)
   const [showLog, setShowLog] = useState(openLog)
 
   useEffect(() => {
@@ -52,6 +53,17 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
       if ((c as any)?.gym?.id) {
         const { data: ok } = await supabase.rpc('is_gym_admin', { gid: (c as any).gym.id })
         setIsAdmin(!!ok)
+      }
+      
+      // Check if current user is a route setter
+      const { data: authUser } = await supabase.auth.getUser()
+      if (authUser.user?.id) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('route_setter')
+          .eq('id', authUser.user.id)
+          .maybeSingle()
+        setIsRouteSetter(!!userData?.route_setter)
       }
       const { data: ph } = await supabase.from('climb_photos').select('id,image_base64').eq('climb_id', id).order('created_at', { ascending: false }).limit(12)
       setPhotos(ph || [])
@@ -220,7 +232,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
               </div>
             ))
           )}
-          {isAdmin && (
+          {isRouteSetter && (
             <div className="pt-4 border-t border-orange-200">
               <CommentBox onSubmit={(v) => addComment(v, undefined, true)} placeholder="Add setter note..." />
             </div>
@@ -303,7 +315,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
         <h2 className="font-semibold mb-4">Comments</h2>
         <div className="space-y-4">
           {/* Comments List */}
-          {(threads['root'] || []).map((c: any) => (
+          {(threads['root'] || []).filter((c: any) => !c.is_setter).map((c: any) => (
             <div key={c.id} className="space-y-3">
               {/* Main Comment */}
               <div className="flex items-start gap-3 group/comment">
