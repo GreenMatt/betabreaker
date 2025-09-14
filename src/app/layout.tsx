@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PWARegister />
         {/* @ts-expect-error Server Component including Client child */}
         <AppShell>{children}</AppShell>
-        <footer className="fixed bottom-0 left-0 right-0 bg-base-panel/80 backdrop-blur border-t border-black/10">
+        <footer className="fixed bottom-0 left-0 right-0 bg-base-panel backdrop-blur-sm border-t border-black/10 z-50">
           <FooterNav />
         </footer>
       </body>
