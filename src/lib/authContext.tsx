@@ -226,7 +226,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const origin = typeof window !== 'undefined' ? window.location.origin : undefined
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: origin ? `${origin}/auth/callback` : undefined }
+        options: {
+          redirectTo: origin ? `${origin}/auth/callback` : undefined,
+          // Ensure authorization code (PKCE) flow instead of implicit hash tokens
+          flowType: 'pkce' as any,
+        }
       })
       if (error) setError(error.message)
     } finally {
