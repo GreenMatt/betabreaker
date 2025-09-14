@@ -166,12 +166,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         expiresAt: newSession?.expires_at ? new Date(newSession.expires_at * 1000).toISOString() : null
       })
 
-      setSession(newSession)
-      setUser(newSession?.user ?? null)
+      if (newSession) setSession(newSession)
+      if (newSession) setUser(newSession.user)
 
-      if (!newSession) {
-        await rehydrateFromStorage()
-      } else {
+      if (newSession) {
         bumpAuthEpoch()
       }
 
@@ -180,6 +178,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'SIGNED_OUT') {
+        setSession(null)
+        setUser(null)
         setError(null)
       }
 
