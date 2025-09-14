@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/lib/authContext'
+import { useFocusTick } from '@/lib/useFocusTick'
 
 // Helper to get YYYY-MM-DD in local time (no timezone conversion)
 function toLocalYMD(date: Date): string {
@@ -87,6 +88,7 @@ function Icon({ type, size = 'md' }: { type: NewType, size?: 'sm' | 'md' | 'lg' 
 
 export default function SessionsPage() {
   const { user, authEpoch } = useAuth()
+  const focusTick = useFocusTick(250)
   const [items, setItems] = useState<Session[]>([])
   const [loading, setLoading] = useState(false)
   const [date, setDate] = useState<string>(() => toLocalYMD(new Date()))
@@ -142,7 +144,7 @@ export default function SessionsPage() {
         setLoading(false)
       }
     })()
-  }, [user?.id, viewYear, viewMonth, authEpoch])
+  }, [user?.id, viewYear, viewMonth, authEpoch, focusTick])
 
   async function addSession() {
     if (!user) return

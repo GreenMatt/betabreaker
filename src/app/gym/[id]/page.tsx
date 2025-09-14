@@ -1,6 +1,7 @@
 "use client"
 // default runtime
 import { useEffect, useMemo, useState } from 'react'
+import { useFocusTick } from '@/lib/useFocusTick'
 import { useAuth } from '@/lib/authContext'
 import Link from 'next/link'
 import ActivityCard from '@/components/ActivityCard'
@@ -18,6 +19,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
   const gid = params.id
   const { authEpoch } = useAuth()
   const { awardMultipleBadges } = useBadgeAwardContext()
+  const focusTick = useFocusTick(250)
   const [gym, setGym] = useState<Gym | null>(null)
   const [climbs, setClimbs] = useState<Climb[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
@@ -194,7 +196,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       }
     })()
     return () => { mounted = false }
-  }, [gid, authEpoch])
+  }, [gid, authEpoch, focusTick])
 
   async function loadActivity(reset: boolean = true) {
     setActivityLoading(true)

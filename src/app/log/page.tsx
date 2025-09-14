@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from 'react'
+import { useFocusTick } from '@/lib/useFocusTick'
 import { supabase } from '@/lib/supabaseClient'
 import { useBadgeAwardContext } from '@/contexts/BadgeAwardContext'
 import { triggerBadgeCheck } from '@/lib/badgeChecker'
@@ -8,6 +9,7 @@ type Gym = { id: string; name: string }
 type Climb = { id: string; name: string; gym_id: string }
 
 export default function QuickLogPage() {
+  const focusTick = useFocusTick(250)
   const { awardMultipleBadges } = useBadgeAwardContext()
   const [gyms, setGyms] = useState<Gym[]>([])
   const [climbs, setClimbs] = useState<Climb[]>([])
@@ -32,7 +34,7 @@ export default function QuickLogPage() {
       if (mounted) setGyms(data || [])
     })()
     return () => { mounted = false }
-  }, [])
+  }, [focusTick])
 
   useEffect(() => {
     let mounted = true

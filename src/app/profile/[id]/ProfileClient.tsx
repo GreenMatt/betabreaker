@@ -1,7 +1,9 @@
 "use client"
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
+import { useRouter } from 'next/navigation'
+import { useFocusTick } from '@/lib/useFocusTick'
 
 type Profile = {
   id: string
@@ -26,6 +28,8 @@ export default function ProfileClient({
   initialFollowing: UserLite[]
   initialFollowers: UserLite[]
 }) {
+  const router = useRouter()
+  const focusTick = useFocusTick(250)
   const [profile, setProfile] = useState<Profile | null>(initialProfile)
   const [badges] = useState(initialBadges)
   const [following] = useState<UserLite[]>(initialFollowing)
@@ -35,6 +39,9 @@ export default function ProfileClient({
   const [followTab, setFollowTab] = useState<'following'|'followers'>('following')
 
   const isOwner = useMemo(() => !!viewerId && !!profile && viewerId === profile.id, [viewerId, profile])
+
+  // Revalidate on tab return without changing layout
+  useEffect(() => { try { router.refresh() } catch {} }, [focusTick, router])
 
   function displayName(): string {
     if (profile?.name && profile.name.trim().length > 0) return profile.name
@@ -144,4 +151,3 @@ export default function ProfileClient({
     </div>
   )
 }
-

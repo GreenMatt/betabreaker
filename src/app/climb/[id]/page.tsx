@@ -1,6 +1,8 @@
 "use client"
 
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/lib/authContext'
+import { useFocusTick } from '@/lib/useFocusTick'
 import Link from 'next/link'
 import { VideoAddForm, VideoPreview, isSupportedVideoUrl } from './VideoEmbed'
 import { useSearchParams } from 'next/navigation'
@@ -13,8 +15,9 @@ type Climb = { id: string; name: string; grade: number | null; type: 'boulder'|'
 export default function ClimbDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
   const qp = useSearchParams()
-  
+  const openLog = qp?.get('log') === '1'
   const { authEpoch } = useAuth()
+  const focusTick = useFocusTick(250)
   const [climb, setClimb] = useState<Climb | null>(null)
   const [photos, setPhotos] = useState<Array<{ id: string, image_base64: string | null }>>([])
   const [videos, setVideos] = useState<Array<{ id: string, url: string, user_id?: string | null }>>([])
@@ -120,7 +123,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
       setSends(mapped)
     })()
     return () => { mounted = false }
-  }, [id])
+  }, [id, authEpoch, focusTick])
 
   const threads = useMemo(() => {
     const byParent: Record<string, any[]> = {}
