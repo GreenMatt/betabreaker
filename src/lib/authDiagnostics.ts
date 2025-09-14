@@ -82,6 +82,20 @@ export class SessionMonitor {
         console.error('Session monitoring error:', error)
       }
     }, intervalMs)
+
+    // Extra runtime event logging
+    try {
+      if (typeof window !== 'undefined') {
+        const onOnline = () => console.log('📶 Network online at', new Date().toISOString())
+        const onOffline = () => console.warn('📴 Network offline at', new Date().toISOString())
+        const onVis = () => console.log(`👁️ Visibility: ${document.hidden ? 'hidden' : 'visible'} at`, new Date().toISOString())
+        const onFocus = () => console.log('🪟 Window focus at', new Date().toISOString())
+        window.addEventListener('online', onOnline)
+        window.addEventListener('offline', onOffline)
+        document.addEventListener('visibilitychange', onVis)
+        window.addEventListener('focus', onFocus)
+      }
+    } catch {}
   }
 
   stopMonitoring() {
@@ -107,6 +121,44 @@ export class SessionMonitor {
       })
     })
     console.groupEnd()
+  }
+
+  async forceRefresh() {
+    try {
+      const res = await supabase.auth.refreshSession()
+      console.log('🔁 Forced token refresh result:', { hasSession: !!res.data.session, error: res.error?.message })
+      return res
+    } catch (e) {
+      console.error('Forced refresh failed:', e)
+    }
+  }
+
+  async rehydrateFromLocal() {
+    if (typeof window === 'undefined') return
+    try {
+      const keys: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (k && /\bsb-.*-auth-token\b/i.test(k)) keys.push(k)
+      }
+      for (const k of keys) {
+        try {
+          const raw = localStorage.getItem(k)
+          if (!raw) continue
+          const parsed = JSON.parse(raw)
+          const cur = parsed?.currentSession || parsed?.session || null
+          const at = cur?.access_token
+          const rt = cur?.refresh_token
+          if (at && rt) {
+            const res = await supabase.auth.setSession({ access_token: at, refresh_token: rt })
+            console.log('🔁 Rehydrate from local result:', { hasSession: !!res.data.session, error: res.error?.message })
+            return res
+          }
+        } catch {}
+      }
+    } catch (e) {
+      console.error('Rehydrate from local failed:', e)
+    }
   }
 
   async testAuthOperations() {
@@ -205,6 +257,8 @@ export function startDiagnostics() {
       test: () => globalMonitor?.testAuthOperations(),
       report: () => globalMonitor?.printReport(),
       storage: () => globalMonitor?.inspectStorage(),
+      refresh: () => globalMonitor?.forceRefresh(),
+      rehydrate: () => globalMonitor?.rehydrateFromLocal(),
       diagnostics: () => globalMonitor?.getDiagnostics(),
       stop: () => globalMonitor?.stopMonitoring()
     }
