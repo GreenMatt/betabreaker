@@ -10,7 +10,7 @@ type Stats = { climbs: number; highest: number; badges: number; fas: number }
 type Badge = { id: string; name: string; icon: string | null; description: string | null }
 
 export default function Page() {
-  const { user, session } = useAuth()
+  const { user, session, authEpoch } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [allBadges, setAllBadges] = useState<Badge[]>([])
   const loadedOnce = useRef(false)
@@ -26,7 +26,7 @@ export default function Page() {
     if (loadedOnce.current) return
     loadedOnce.current = true
     void loadData()
-  }, [session?.access_token]) // react when the real session is present
+  }, [session?.access_token, authEpoch]) // react when session refreshes/rehydrates
 
   async function loadData() {
     try {

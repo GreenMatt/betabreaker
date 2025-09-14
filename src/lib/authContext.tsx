@@ -13,6 +13,7 @@ type AuthContextType = {
   session: Session | null
   loading: boolean
   error: string | null
+  authEpoch: number
   signInWith: (provider: Provider) => Promise<void>
   signInEmail: (email: string) => Promise<void>
   signOut: () => Promise<void>
@@ -33,6 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [authEpoch, setAuthEpoch] = useState(0)
+  const bumpAuthEpoch = () => setAuthEpoch((n) => n + 1)
 
   useEffect(() => {
     // Enable diagnostics in dev, or when BB_DEBUG=1 or NEXT_PUBLIC_AUTH_DEBUG=1
@@ -68,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setSession(data.session)
                 setUser(data.session.user)
                 try { await ensureProfile(data.session.user) } catch {}
+                bumpAuthEpoch()
                 return true
               }
             }
@@ -94,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(data.session)
           setUser(data.session.user)
           try { await ensureProfile(data.session.user) } catch (e) { console.warn('ensureProfile on bootstrap failed:', e) }
+          bumpAuthEpoch()
         } else {
           console.log('ℹ️ No session found during bootstrap')
           await rehydrateFromStorage()
@@ -119,6 +124,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!newSession) {
         await rehydrateFromStorage()
+      } else {
+        bumpAuthEpoch()
       }
 
       if (event === 'SIGNED_IN' && newSession?.user) {
@@ -131,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (event === 'TOKEN_REFRESHED') {
         console.log('🔄 Token refreshed successfully')
+        bumpAuthEpoch()
       }
 
       setLoading(false)
@@ -141,8 +149,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data } = await supabase.auth.getSession()
         if (data.session) {
           await supabase.auth.refreshSession().catch(() => {})
+          bumpAuthEpoch()
         } else {
-          await rehydrateFromStorage()
+          const ok = await rehydrateFromStorage()
+          if (ok) bumpAuthEpoch()
         }
       } catch {}
     }
@@ -159,8 +169,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data } = await supabase.auth.getSession()
         if (data.session) {
           await supabase.auth.refreshSession().catch(() => {})
+          bumpAuthEpoch()
         } else {
-          await rehydrateFromStorage()
+          const ok = await rehydrateFromStorage()
+          if (ok) bumpAuthEpoch()
         }
       } catch {}
     }
@@ -206,9 +218,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut()
   }, [])
 
+  // Expose minimal controls for prod debugging even if diagnostics are disabled
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        (window as any).bbAuth = {
+          refresh: () => supabase.auth.refreshSession(),
+          rehydrate: async () => {
+            const ok = await (async () => {
+              try {
+                if (typeof window === 'undefined') return false
+                const keys: string[] = []
+                for (let i = 0; i < localStorage.length; i++) {
+                  const k = localStorage.key(i)
+                  if (k && /\bsb-.*-auth-token\b/i.test(k)) keys.push(k)
+                }
+                for (const k of keys) {
+                  try {
+                    const raw = localStorage.getItem(k)
+                    if (!raw) continue
+                    const parsed = JSON.parse(raw)
+                    const cur = parsed?.currentSession || parsed?.session || null
+                    const at = cur?.access_token
+                    const rt = cur?.refresh_token
+                    if (at && rt) {
+                      const { data, error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt })
+                      if (!error && data?.session) { setSession(data.session); setUser(data.session.user); return true }
+                    }
+                  } catch {}
+                }
+              } catch {}
+              return false
+            })()
+            if (ok) bumpAuthEpoch()
+            return ok
+          }
+        }
+      }
+    } catch {}
+  }, [])
+
   const value = useMemo(
-    () => ({ user, session, loading, error, signInWith, signInEmail, signOut }),
-    [user, session, loading, error, signInWith, signInEmail, signOut]
+    () => ({ user, session, loading, error, authEpoch, signInWith, signInEmail, signOut }),
+    [user, session, loading, error, authEpoch, signInWith, signInEmail, signOut]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
