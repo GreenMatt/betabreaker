@@ -5,6 +5,7 @@ import { supabase } from './supabaseClient'
 export function usePageVisibility() {
   const wasAwayRef = useRef(false)
   const lastVisibleRef = useRef(Date.now())
+  const lastRefreshRef = useRef(0)
 
   useEffect(() => {
     const handleVisibilityChange = async () => {
@@ -14,19 +15,18 @@ export function usePageVisibility() {
         lastVisibleRef.current = Date.now()
       } else if (wasAwayRef.current) {
         // User is returning to the page
-        const timeAway = Date.now() - lastVisibleRef.current
-        
-        // If user was away for more than 5 minutes, refresh the session
-        if (timeAway > 5 * 60 * 1000) {
-          try {
-            const { data: currentSession } = await supabase.auth.getSession()
-            if (currentSession.session) {
-              // Attempt to refresh the session
+        const now = Date.now()
+        const sinceLast = now - lastRefreshRef.current
+        try {
+          const { data: currentSession } = await supabase.auth.getSession()
+          if (currentSession.session) {
+            if (sinceLast > 60_000) { // 60s cooldown
               await supabase.auth.refreshSession()
+              lastRefreshRef.current = now
             }
-          } catch (error) {
-            console.warn('Failed to refresh session on page return:', error)
           }
+        } catch (error) {
+          console.warn('Failed to refresh session on page return:', error)
         }
         wasAwayRef.current = false
       }
@@ -35,16 +35,16 @@ export function usePageVisibility() {
     // Also handle when the window regains focus
     const handleFocus = async () => {
       if (wasAwayRef.current) {
-        const timeAway = Date.now() - lastVisibleRef.current
-        if (timeAway > 5 * 60 * 1000) {
-          try {
-            const { data: currentSession } = await supabase.auth.getSession()
-            if (currentSession.session) {
-              await supabase.auth.refreshSession()
-            }
-          } catch (error) {
-            console.warn('Failed to refresh session on focus:', error)
+        const now = Date.now()
+        const sinceLast = now - lastRefreshRef.current
+        try {
+          const { data: currentSession } = await supabase.auth.getSession()
+          if (currentSession.session && sinceLast > 60_000) {
+            await supabase.auth.refreshSession()
+            lastRefreshRef.current = now
           }
+        } catch (error) {
+          console.warn('Failed to refresh session on focus:', error)
         }
         wasAwayRef.current = false
       }

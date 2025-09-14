@@ -35,9 +35,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      startDiagnostics()
-    }
+    // Enable diagnostics in dev, or when BB_DEBUG=1 or NEXT_PUBLIC_AUTH_DEBUG=1
+    try {
+      const want = process.env.NODE_ENV === 'development' ||
+        process.env.NEXT_PUBLIC_AUTH_DEBUG === '1' ||
+        (typeof window !== 'undefined' && localStorage.getItem('BB_DEBUG') === '1')
+      if (want) startDiagnostics()
+    } catch {}
 
     const safety = setTimeout(() => setLoading(false), 10_000)
 
@@ -144,9 +148,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     window.addEventListener('online', onOnline)
 
+    // Refresh when the tab becomes visible (with a small cooldown)
+    let lastVisRefresh = 0
+    const onVis = async () => {
+      if (document.hidden) return
+      const now = Date.now()
+      if (now - lastVisRefresh < 60_000) return // 60s cooldown
+      lastVisRefresh = now
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (data.session) {
+          await supabase.auth.refreshSession().catch(() => {})
+        } else {
+          await rehydrateFromStorage()
+        }
+      } catch {}
+    }
+    document.addEventListener('visibilitychange', onVis)
+
     return () => {
       subscription.unsubscribe()
       window.removeEventListener('online', onOnline)
+      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 
@@ -196,4 +219,3 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
-
