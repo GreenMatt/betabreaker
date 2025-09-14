@@ -1,70 +1,47 @@
 // app/page.tsx
-"use client"
+// Server-rendered home to avoid client auth bootstrap gaps
 
 import Link from 'next/link'
-import { useAuth } from '@/lib/authContext'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { getServerSupabase } from '@/lib/supabaseServer'
 
 type Stats = { climbs: number; highest: number; badges: number; fas: number }
 type Badge = { id: string; name: string; icon: string | null; description: string | null }
 
-export default function Page() {
-  const { user, session, authEpoch } = useAuth()
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [allBadges, setAllBadges] = useState<Badge[]>([])
+export default async function Page() {
+  const supabase = getServerSupabase()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  useEffect(() => {
-    if (!session || !user) {
-      setStats(null)
-      setAllBadges([])
-      return
-    }
-    void loadData()
-  }, [session?.access_token, authEpoch])
+  let stats: Stats = { climbs: 0, highest: 0, badges: 0, fas: 0 }
+  let allBadges: Badge[] = []
 
-  async function loadData() {
-    try {
-      // Do NOT call getSession() here — the client already has it.
-      const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_stats')
-
-      if (!rpcError && rpcData) {
-        const row = Array.isArray(rpcData) ? rpcData[0] : rpcData
-        setStats({
-          climbs: row?.climb_count ?? 0,
-          highest: row?.highest_grade ?? 0,
-          badges: row?.badge_count ?? 0,
-          fas: row?.fa_count ?? 0,
-        })
-      } else {
-        // Fallback to basic authed queries
-        const { count: climbs } = await supabase
-          .from('climb_logs')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user!.id)
-
-        const { count: badges } = await supabase
-          .from('user_badges')
-          .select('user_id', { count: 'exact', head: true })
-          .eq('user_id', user!.id)
-
-        setStats({ climbs: climbs ?? 0, highest: 0, badges: badges ?? 0, fas: 0 })
+  if (session?.user) {
+    const { data: rpcData } = await supabase.rpc('get_user_stats')
+    if (rpcData) {
+      const row: any = Array.isArray(rpcData) ? rpcData[0] : rpcData
+      stats = {
+        climbs: row?.climb_count ?? 0,
+        highest: row?.highest_grade ?? 0,
+        badges: row?.badge_count ?? 0,
+        fas: row?.fa_count ?? 0,
       }
-
-      const { data: badgesData } = await supabase
-        .from('badges')
-        .select('id,name,icon,description')
-        .order('name')
-
-      setAllBadges(badgesData ?? [])
-    } catch (e) {
-      console.error('loadData() failed:', e)
-      setStats({ climbs: 0, highest: 0, badges: 0, fas: 0 })
-      setAllBadges([])
+    } else {
+      const { count: climbs } = await supabase
+        .from('climb_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+      const { count: badges } = await supabase
+        .from('user_badges')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+      stats = { climbs: climbs ?? 0, highest: 0, badges: badges ?? 0, fas: 0 }
     }
-  }
 
-  const handleRefresh = () => { void loadData() }
+    const { data: badgesData } = await supabase
+      .from('badges')
+      .select('id,name,icon,description')
+      .order('name')
+    allBadges = (badgesData || []) as any
+  }
 
   const resolveIconUrl = (icon: string | null): string => {
     if (!icon) return '/icons/betabreaker_header.png'
@@ -74,10 +51,10 @@ export default function Page() {
     return `/icons/${normalized}`
   }
 
-  if (!user) {
+  if (!session?.user) {
     return (
       <div className="min-h-[60vh] grid place-items-center">
-        <div className="text-base-subtext">Loading...</div>
+        <div className="text-base-subtext">Loading…</div>
       </div>
     )
   }
@@ -97,19 +74,19 @@ export default function Page() {
         <h2 className="font-semibold mb-2">Personal Stats</h2>
         <div className="grid grid-cols-4 gap-3 text-center">
           <div>
-            <div className="text-3xl font-bold">{stats?.climbs ?? 0}</div>
+            <div className="text-3xl font-bold">{stats.climbs}</div>
             <div className="text-xs text-base-subtext">Climbs</div>
           </div>
           <div>
-            <div className="text-3xl font-bold">{stats?.highest ?? 0}</div>
+            <div className="text-3xl font-bold">{stats.highest}</div>
             <div className="text-xs text-base-subtext">Highest Grade</div>
           </div>
           <div>
-            <div className="text-3xl font-bold">{stats?.badges ?? 0}</div>
+            <div className="text-3xl font-bold">{stats.badges}</div>
             <div className="text-xs text-base-subtext">Badges</div>
           </div>
           <div>
-            <div className="text-3xl font-bold">{stats?.fas ?? 0}</div>
+            <div className="text-3xl font-bold">{stats.fas}</div>
             <div className="text-xs text-base-subtext">FAs</div>
           </div>
         </div>
