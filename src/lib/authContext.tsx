@@ -81,6 +81,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false
     }
 
+    const pingDb = async () => {
+      try {
+        const { error } = await supabase.from('users').select('id', { head: true, count: 'exact' }).limit(1)
+        return !error
+      } catch { return false }
+    }
+
+    const recover = async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (data.session) {
+          await supabase.auth.refreshSession().catch(() => {})
+          if (await pingDb()) { bumpAuthEpoch(); return true }
+        }
+        const ok = await rehydrateFromStorage()
+        if (ok && await pingDb()) { bumpAuthEpoch(); return true }
+      } catch {}
+      return false
+    }
+
     const init = async () => {
       try {
         console.log('🔐 Initializing auth session...')
@@ -101,7 +121,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           bumpAuthEpoch()
         } else {
           console.log('ℹ️ No session found during bootstrap')
-          await rehydrateFromStorage()
+          const ok = await rehydrateFromStorage()
+          if (ok) bumpAuthEpoch()
         }
       } finally {
         clearTimeout(safety)
@@ -146,14 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const onOnline = async () => {
       try {
-        const { data } = await supabase.auth.getSession()
-        if (data.session) {
-          await supabase.auth.refreshSession().catch(() => {})
-          bumpAuthEpoch()
-        } else {
-          const ok = await rehydrateFromStorage()
-          if (ok) bumpAuthEpoch()
-        }
+        await recover()
       } catch {}
     }
     window.addEventListener('online', onOnline)
@@ -166,14 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (now - lastVisRefresh < 60_000) return // 60s cooldown
       lastVisRefresh = now
       try {
-        const { data } = await supabase.auth.getSession()
-        if (data.session) {
-          await supabase.auth.refreshSession().catch(() => {})
-          bumpAuthEpoch()
-        } else {
-          const ok = await rehydrateFromStorage()
-          if (ok) bumpAuthEpoch()
-        }
+        await recover()
       } catch {}
     }
     document.addEventListener('visibilitychange', onVis)
@@ -223,7 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (typeof window !== 'undefined') {
         (window as any).bbAuth = {
-          refresh: () => supabase.auth.refreshSession(),
+          refresh: async () => { const r = await supabase.auth.refreshSession(); bumpAuthEpoch(); return r },
           rehydrate: async () => {
             const ok = await (async () => {
               try {

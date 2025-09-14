@@ -273,3 +273,19 @@ export function startDiagnostics() {
 
   return globalMonitor
 }
+
+// Ensure a stable window.authMonitor shape even if diagnostics are not started
+if (typeof window !== 'undefined') {
+  const w: any = window as any
+  if (!w.authMonitor) {
+    w.authMonitor = {
+      test: () => console.warn('auth diagnostics not enabled'),
+      report: () => console.warn('auth diagnostics not enabled'),
+      storage: () => console.warn('auth diagnostics not enabled'),
+      refresh: () => console.warn('auth diagnostics not enabled'),
+      rehydrate: () => console.warn('auth diagnostics not enabled'),
+      diagnostics: () => console.warn('auth diagnostics not enabled'),
+      stop: () => console.warn('auth diagnostics not enabled'),
+    }
+  }
+}

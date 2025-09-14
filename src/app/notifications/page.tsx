@@ -14,7 +14,7 @@ type Notification = {
 }
 
 export default function NotificationsPage() {
-  const { user } = useAuth()
+  const { user, authEpoch } = useAuth()
   const [items, setItems] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [marking, setMarking] = useState(false)
@@ -48,7 +48,7 @@ export default function NotificationsPage() {
         setLoading(false)
       }
     })()
-  }, [user?.id])
+  }, [user?.id, authEpoch])
 
   async function markAllRead() {
     if (!user) return

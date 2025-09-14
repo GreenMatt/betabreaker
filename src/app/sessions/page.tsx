@@ -86,7 +86,7 @@ function Icon({ type, size = 'md' }: { type: NewType, size?: 'sm' | 'md' | 'lg' 
 }
 
 export default function SessionsPage() {
-  const { user } = useAuth()
+  const { user, authEpoch } = useAuth()
   const [items, setItems] = useState<Session[]>([])
   const [loading, setLoading] = useState(false)
   const [date, setDate] = useState<string>(() => toLocalYMD(new Date()))
@@ -142,7 +142,7 @@ export default function SessionsPage() {
         setLoading(false)
       }
     })()
-  }, [user?.id, viewYear, viewMonth])
+  }, [user?.id, viewYear, viewMonth, authEpoch])
 
   async function addSession() {
     if (!user) return

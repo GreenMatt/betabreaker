@@ -1,6 +1,7 @@
 "use client"
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/authContext'
 import { supabase } from '@/lib/supabaseClient'
 
 type Gym = {
@@ -10,13 +11,14 @@ type Gym = {
 }
 
 export default function GymPage() {
+  const { authEpoch } = useAuth()
   const [gyms, setGyms] = useState<Gym[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
-    ;(async () => {
+    const load = async () => {
       setLoading(true)
       setError(null)
       const { data, error } = await supabase.from('gyms').select('id,name,location').order('created_at', { ascending: true })
@@ -24,9 +26,10 @@ export default function GymPage() {
       if (error) setError(error.message)
       else setGyms(data || [])
       setLoading(false)
-    })()
+    }
+    load()
     return () => { mounted = false }
-  }, [])
+  }, [authEpoch])
 
   return (
     <div className="space-y-4">

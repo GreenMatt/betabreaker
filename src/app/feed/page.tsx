@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useAuth } from '@/lib/authContext'
 import ActivityCard from '@/components/ActivityCard'
 
 type OwnItem = {
@@ -35,6 +36,7 @@ type FollowItem = {
 }
 
 export default function FeedPage() {
+  const { user, authEpoch } = useAuth()
   const [tab, setTab] = useState<'me'|'following'>('me')
   const [me, setMe] = useState<OwnItem[]>([])
   const [following, setFollowing] = useState<FollowItem[]>([])
@@ -55,8 +57,8 @@ export default function FeedPage() {
   const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
-  }, [])
+    setUserId(user?.id ?? null)
+  }, [user?.id])
 
   useEffect(() => {
     let mounted = true
@@ -80,7 +82,7 @@ export default function FeedPage() {
       }
     })()
     return () => { mounted = false }
-  }, [tab, userId])
+  }, [tab, userId, authEpoch])
 
   async function fetchMePage(page: number, mounted = true) {
     const from = page * PAGE_SIZE

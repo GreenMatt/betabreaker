@@ -3,7 +3,7 @@
 
 import Link from 'next/link'
 import { useAuth } from '@/lib/authContext'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 
 type Stats = { climbs: number; highest: number; badges: number; fas: number }
@@ -13,20 +13,15 @@ export default function Page() {
   const { user, session, authEpoch } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [allBadges, setAllBadges] = useState<Badge[]>([])
-  const loadedOnce = useRef(false)
 
   useEffect(() => {
-    // Only run once when we truly have a valid session
     if (!session || !user) {
       setStats(null)
       setAllBadges([])
-      loadedOnce.current = false
       return
     }
-    if (loadedOnce.current) return
-    loadedOnce.current = true
     void loadData()
-  }, [session?.access_token, authEpoch]) // react when session refreshes/rehydrates
+  }, [session?.access_token, authEpoch])
 
   async function loadData() {
     try {
@@ -69,12 +64,7 @@ export default function Page() {
     }
   }
 
-  const handleRefresh = () => {
-    loadedOnce.current = false
-    setStats(null)
-    setAllBadges([])
-    void loadData()
-  }
+  const handleRefresh = () => { void loadData() }
 
   const resolveIconUrl = (icon: string | null): string => {
     if (!icon) return '/icons/betabreaker_header.png'

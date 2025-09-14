@@ -1,6 +1,7 @@
 "use client"
 // default runtime
 import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '@/lib/authContext'
 import Link from 'next/link'
 import ActivityCard from '@/components/ActivityCard'
 import { useBadgeAwardContext } from '@/contexts/BadgeAwardContext'
@@ -15,6 +16,7 @@ type Photo = { id: string; climb_id: string; image_base64: string | null; create
 
 export default function GymDetailPage({ params }: { params: { id: string } }) {
   const gid = params.id
+  const { authEpoch } = useAuth()
   const { awardMultipleBadges } = useBadgeAwardContext()
   const [gym, setGym] = useState<Gym | null>(null)
   const [climbs, setClimbs] = useState<Climb[]>([])
@@ -192,7 +194,7 @@ export default function GymDetailPage({ params }: { params: { id: string } }) {
       }
     })()
     return () => { mounted = false }
-  }, [gid])
+  }, [gid, authEpoch])
 
   async function loadActivity(reset: boolean = true) {
     setActivityLoading(true)
