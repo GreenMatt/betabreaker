@@ -4,7 +4,19 @@ import { useEffect } from 'react'
 export default function Stabilizer() {
   useEffect(() => {
     console.log('[Simple Stabilizer] Loaded - doing minimal cleanup only')
-    
+
+    // Force a single canonical host to avoid split localStorage sessions between apex and www
+    try {
+      if (typeof window !== 'undefined') {
+        const h = window.location.hostname
+        if (h === 'betabreaker.app') {
+          const target = `https://www.betabreaker.app${window.location.pathname}${window.location.search}${window.location.hash}`
+          window.location.replace(target)
+          return
+        }
+      }
+    } catch {}
+
     // Only do basic service worker cleanup, no session clearing
     const cleanupServiceWorkers = async () => {
       try {

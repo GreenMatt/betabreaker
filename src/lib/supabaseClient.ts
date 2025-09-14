@@ -12,25 +12,43 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
 let clientRef: SupabaseClient | null = null
 
 const resilientFetch: typeof fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-  const res = await fetch(input as any, init)
-
-  // Only consider retrying for requests that go to our Supabase project
-  // and that fail with auth errors.
-  if ((res.status === 401 || res.status === 403) && typeof SUPABASE_URL === 'string' && SUPABASE_URL) {
-    try {
-      const reqUrl = typeof input === 'string' ? input : (input as Request).url || (input as URL).toString()
-      const supabaseOrigin = new URL(SUPABASE_URL).origin
-      if (reqUrl.startsWith(supabaseOrigin)) {
-        // Attempt a one-time refresh and retry
-        await clientRef?.auth.refreshSession().catch(() => {})
-        return await fetch(input as any, init)
-      }
-    } catch {
-      // fall through and return original response
-    }
+  const toUrl = () => {
+    try { return typeof input === 'string' ? input : (input as Request).url || (input as URL).toString() } catch { return '' }
   }
+  const reqUrl = toUrl()
+  const supabaseOrigin = (() => { try { return new URL(SUPABASE_URL).origin } catch { return '' } })()
 
-  return res
+  // First attempt
+  try {
+    const res = await fetch(input as any, init)
+
+    // If unauthorized to Supabase, try a one-time refresh and retry
+    if ((res.status === 401 || res.status === 403) && reqUrl.startsWith(supabaseOrigin)) {
+      try { await clientRef?.auth.refreshSession() } catch {}
+      return await fetch(input as any, init)
+    }
+
+    return res
+  } catch (e: any) {
+    // Handle transient network changes for Supabase calls: wait briefly and retry once
+    const isNetworkErr = e && (e.name === 'TypeError' || /Network|Failed to fetch|ERR_NETWORK/i.test(String(e)))
+    if (isNetworkErr && reqUrl.startsWith(supabaseOrigin)) {
+      // Small backoff; if back online, retry
+      await new Promise(r => setTimeout(r, 800))
+      try {
+        const res2 = await fetch(input as any, init)
+        if ((res2.status === 401 || res2.status === 403)) {
+          try { await clientRef?.auth.refreshSession() } catch {}
+          return await fetch(input as any, init)
+        }
+        return res2
+      } catch {
+        // give up; rethrow original
+        throw e
+      }
+    }
+    throw e
+  }
 }
 
 export const supabase = (() => {
