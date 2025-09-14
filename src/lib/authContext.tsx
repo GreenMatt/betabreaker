@@ -14,6 +14,7 @@ type AuthContextType = {
   loading: boolean
   error: string | null
   authEpoch: number
+  ready: boolean
   signInWith: (provider: Provider) => Promise<void>
   signInEmail: (email: string) => Promise<void>
   signOut: () => Promise<void>
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [authEpoch, setAuthEpoch] = useState(0)
+  const [ready, setReady] = useState(false)
   const bumpAuthEpoch = () => setAuthEpoch((n) => n + 1)
 
   useEffect(() => {
@@ -127,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         clearTimeout(safety)
         setLoading(false)
+        setReady(true)
       }
     }
 
@@ -163,6 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setLoading(false)
+      setReady(true)
     })
 
     const onOnline = async () => {
@@ -266,8 +270,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, session, loading, error, authEpoch, signInWith, signInEmail, signOut }),
-    [user, session, loading, error, authEpoch, signInWith, signInEmail, signOut]
+    () => ({ user, session, loading, error, authEpoch, ready, signInWith, signInEmail, signOut }),
+    [user, session, loading, error, authEpoch, ready, signInWith, signInEmail, signOut]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

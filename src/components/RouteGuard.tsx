@@ -7,24 +7,24 @@ const PUBLIC_PATHS = new Set(['/login'])
 const ADMIN_PATHS = new Set(['/admin'])
 
 export default function RouteGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, ready } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
 
   useEffect(() => {
-    if (loading) return
+    if (!ready) return
     const isPublic = PUBLIC_PATHS.has(pathname || '')
     if (!user && !isPublic) {
       router.replace('/login')
     } else if (user && isPublic) {
       router.replace('/')
     }
-  }, [user, loading, pathname, router])
+  }, [user, ready, pathname, router])
 
   const isPublic = PUBLIC_PATHS.has(pathname || '')
 
   // While resolving session
-  if (loading && !(pathname && ADMIN_PATHS.has(pathname))) {
+  if (!ready && !(pathname && ADMIN_PATHS.has(pathname))) {
     return (
       <div className="min-h-[60vh] grid place-items-center">
         <div className="animate-pulse text-base-subtext">Loading…</div>
@@ -33,14 +33,14 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
   }
 
   // If redirecting away, show a friendly placeholder instead of blank
-  if (!user && !isPublic && !(pathname && ADMIN_PATHS.has(pathname))) {
+  if (ready && !user && !isPublic && !(pathname && ADMIN_PATHS.has(pathname))) {
     return (
       <div className="min-h-[60vh] grid place-items-center">
         <div className="text-base-subtext">Redirecting to login…</div>
       </div>
     )
   }
-  if (user && isPublic) {
+  if (ready && user && isPublic) {
     return (
       <div className="min-h-[60vh] grid place-items-center">
         <div className="text-base-subtext">Redirecting…</div>
