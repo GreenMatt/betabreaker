@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
+import { startDiagnostics } from '@/lib/authDiagnostics'
 
 type Provider = 'google' | 'facebook'
 
@@ -43,22 +44,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Start diagnostics monitoring in development
+    if (process.env.NODE_ENV === 'development') {
+      startDiagnostics()
+    }
+
     // 10s safety so we never block the UI forever
     const safety = setTimeout(() => setLoading(false), 10_000)
 
     const init = async () => {
       try {
+        console.log('🔐 Initializing auth session...')
         const { data, error } = await supabase.auth.getSession()
+
         if (error) {
-          console.error('Auth bootstrap error:', error)
+          console.error('❌ Auth bootstrap error:', error)
           setError(error.message)
         }
+
         if (data?.session) {
+          console.log('✅ Session found:', {
+            userId: data.session.user.id,
+            expiresAt: new Date(data.session.expires_at! * 1000).toISOString(),
+            provider: data.session.user.app_metadata?.provider
+          })
           setSession(data.session)
           setUser(data.session.user)
-          try { await ensureProfile(data.session.user) } catch (e) {
-            console.warn('ensureProfile on bootstrap failed:', e)
+
+          try {
+            await ensureProfile(data.session.user)
+          } catch (e) {
+            console.warn('⚠️ ensureProfile on bootstrap failed:', e)
           }
+        } else {
+          console.log('ℹ️ No session found during bootstrap')
         }
       } finally {
         clearTimeout(safety)
@@ -69,17 +88,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     init()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log(`🔄 Auth state changed: ${event}`, {
+        hasSession: !!newSession,
+        userId: newSession?.user?.id,
+        timestamp: new Date().toISOString(),
+        expiresAt: newSession?.expires_at ? new Date(newSession.expires_at * 1000).toISOString() : null
+      })
+
       setSession(newSession)
       setUser(newSession?.user ?? null)
 
       if (event === 'SIGNED_IN' && newSession?.user) {
-        try { await ensureProfile(newSession.user) } catch (e) {
-          console.warn('ensureProfile on sign-in failed:', e)
+        try {
+          await ensureProfile(newSession.user)
+        } catch (e) {
+          console.warn('⚠️ ensureProfile on sign-in failed:', e)
         }
       }
 
       if (event === 'SIGNED_OUT') {
+        console.log('🚪 User signed out')
         setError(null)
+      }
+
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('🔄 Token refreshed successfully')
       }
 
       setLoading(false)
