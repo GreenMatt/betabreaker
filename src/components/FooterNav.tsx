@@ -8,10 +8,10 @@ export default function FooterNav() {
     if (href === '/') return pathname === '/'
     return pathname === href || pathname.startsWith(href + '/')
   }
-  const base = "py-2"
-  const active = "text-neon-purple font-semibold"
+  const base = "py-3 px-2 rounded-lg transition-all duration-200 hover:bg-base-surface/50 active:scale-95 min-h-[44px] flex items-center justify-center"
+  const active = "text-neon-purple font-semibold bg-neon-purple/10 shadow-sm"
   return (
-    <div className="max-w-screen-md mx-auto px-4 py-2 grid grid-cols-6 gap-2 text-xs text-center text-base-subtext">
+    <div className="max-w-screen-md mx-auto px-3 py-3 grid grid-cols-6 gap-3 text-sm font-medium text-center text-base-subtext">
       <Link href="/" className={`${base} ${isActive('/') ? active : ''}`}>Home</Link>
       <Link href="/gym" className={`${base} ${isActive('/gym') ? active : ''}`}>Gyms</Link>
       <Link href="/log" className={`${base} ${isActive('/log') ? active : ''}`}>Log</Link>
