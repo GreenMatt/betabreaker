@@ -7,8 +7,11 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import UserNav from '@/components/UserNav'
 import Logo from '@/components/Logo'
 import Stabilizer from '@/components/Stabilizer'
+import { usePageVisibility } from '@/lib/usePageVisibility'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  // Proactively refresh session after returning from background (5+ mins)
+  usePageVisibility()
 
   return (
     <AuthProvider>
