@@ -1,6 +1,8 @@
 "use client"
 import { useState, useMemo } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+
+// Lazy-load Supabase on the client to avoid Edge runtime pulling Node builtins
+const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
 
 // Helper to get YYYY-MM-DD in local time (no timezone conversion)
 function toLocalYMD(date: Date): string {
@@ -142,6 +144,7 @@ export default function SessionsClient({
     const dur = Math.max(0, parseInt(duration || '0', 10))
     // Insert plain YYYY-MM-DD string (no timezone conversion)
     try {
+      const supabase = await getSupabase()
       const { data, error } = await supabase
         .from('training_sessions')
         .insert({ user_id: userId, date: date, duration_mins: dur, activity_type: activity, notes })
@@ -159,6 +162,7 @@ export default function SessionsClient({
   async function loadMoreSessions() {
     setSessionsLoading(true)
     try {
+      const supabase = await getSupabase()
       const monthStartYMD = toLocalYMD(new Date(viewYear, viewMonth, 1))
       const monthEndYMD = toLocalYMD(new Date(viewYear, viewMonth + 1, 0))
       const pageSize = 5
@@ -405,6 +409,7 @@ export default function SessionsClient({
                         <button className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors" onClick={() => { setEditingId(null); setEditDraft({}) }}>Cancel</button>
                         <button className="px-3 py-1 bg-neon-purple hover:bg-neon-purple/80 rounded text-xs font-medium transition-colors" onClick={async () => {
                           try {
+                            const supabase = await getSupabase()
                             const payload: any = {
                               date: (editDraft.date as string) || s.date.slice(0, 10),
                               activity_type: (editDraft.activity_type as Session['activity_type']) || s.activity_type,
@@ -470,6 +475,7 @@ export default function SessionsClient({
                           className="p-1.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
                           onClick={async () => {
                             if (!confirm('Delete this session?')) return
+                            const supabase = await getSupabase()
                             const { error } = await supabase.from('training_sessions').delete().eq('id', s.id)
                             if (error) { alert(error.message); return }
                             setItems(prev => prev.filter(x => x.id !== s.id))
