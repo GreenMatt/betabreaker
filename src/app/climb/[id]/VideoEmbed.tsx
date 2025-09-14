@@ -72,26 +72,7 @@ function normalizeInstaPermalink(url: string): string | null {
 declare global { interface Window { instgrm?: any } }
 
 function InstagramEmbed({ url }: { url: string }) {
-  const ref = React.useRef<HTMLDivElement>(null)
-  React.useEffect(() => {
-    const permalink = normalizeInstaPermalink(url)
-    if (!permalink) return
-    // Ensure script is loaded once
-    function process() { try { (window as any).instgrm?.Embeds?.process?.() } catch {} }
-    const existing = document.querySelector('script#ig-embed') as HTMLScriptElement | null
-    if (!existing) {
-      const s = document.createElement('script')
-      s.id = 'ig-embed'
-      s.async = true
-      s.src = 'https://www.instagram.com/embed.js'
-      s.onload = () => process()
-      document.body.appendChild(s)
-    } else {
-      process()
-    }
-  }, [url])
   const permalink = normalizeInstaPermalink(url)
-  // Fallback clickable card if permalink couldn't be parsed
   if (!permalink) {
     return (
       <a href={url} target="_blank" rel="noreferrer" className="block">
@@ -104,16 +85,36 @@ function InstagramEmbed({ url }: { url: string }) {
       </a>
     )
   }
+
+  // Prefer Instagram's direct iframe embed to allow inline playback.
+  // Example: https://www.instagram.com/reel/{id}/embed
+  // Fallback to blockquote embed.js if iframe is blocked (account settings or private posts).
+  const parts = new URL(permalink).pathname.split('/').filter(Boolean)
+  const type = parts[0] // p | reel | tv
+  const id = parts[1]
+  const iframeSrc = `https://www.instagram.com/${type}/${id}/embed`
+  const aspect = type === 'reel' ? '9 / 16' : '4 / 5'
+
   return (
-    <div ref={ref} className="w-full">
-      <blockquote
-        className="instagram-media"
-        data-instgrm-permalink={permalink}
-        data-instgrm-version="14"
-        style={{ background: '#111', border: 0, margin: 0, padding: 0, width: '100%' }}
-      >
-        <a href={permalink} target="_blank" rel="noreferrer">View on Instagram</a>
-      </blockquote>
+    <div className="w-full">
+      <div className="w-full bg-black" style={{ aspectRatio: aspect, borderRadius: 8, overflow: 'hidden' }}>
+        <iframe
+          key={iframeSrc}
+          src={iframeSrc}
+          className="w-full h-full"
+          title="Instagram"
+          loading="lazy"
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          allowFullScreen
+          referrerPolicy="origin-when-cross-origin"
+          style={{ border: 0 }}
+        />
+      </div>
+      <div className="mt-2 text-right">
+        <a href={permalink} target="_blank" rel="noreferrer" className="text-xs text-base-subtext hover:underline">
+          Open on Instagram
+        </a>
+      </div>
     </div>
   )
 }
