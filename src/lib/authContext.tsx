@@ -106,25 +106,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const init = async () => {
       try {
         console.log('🔐 Initializing auth session...')
-        const { data, error } = await supabase.auth.getSession()
-        if (error) {
-          console.error('Auth bootstrap error:', error)
-          setError(error.message)
-        }
-        if (data?.session) {
-          console.log('✅ Session found:', {
-            userId: data.session.user.id,
-            expiresAt: new Date(data.session.expires_at! * 1000).toISOString(),
-            provider: data.session.user.app_metadata?.provider
+        // Prefer server session (cookie-based) so we avoid client bootstrap gaps
+        let serverSession: any = null
+        try {
+          const res = await fetch('/api/auth/session', { cache: 'no-store' })
+          if (res.ok) {
+            const json = await res.json()
+            serverSession = json?.session || null
+          }
+        } catch {}
+
+        if (serverSession) {
+          console.log('✅ Session found (server):', {
+            userId: serverSession.user.id,
+            expiresAt: new Date(serverSession.expires_at! * 1000).toISOString(),
+            provider: serverSession.user.app_metadata?.provider
           })
-          setSession(data.session)
-          setUser(data.session.user)
-          try { await ensureProfile(data.session.user) } catch (e) { console.warn('ensureProfile on bootstrap failed:', e) }
+          setSession(serverSession)
+          setUser(serverSession.user)
+          try { await ensureProfile(serverSession.user) } catch (e) { console.warn('ensureProfile on bootstrap failed:', e) }
           bumpAuthEpoch()
         } else {
-          console.log('ℹ️ No session found during bootstrap')
-          const ok = await rehydrateFromStorage()
-          if (ok) bumpAuthEpoch()
+          // Fallback to client query
+          const { data, error } = await supabase.auth.getSession()
+          if (error) {
+            console.error('Auth bootstrap error:', error)
+            setError(error.message)
+          }
+          if (data?.session) {
+            console.log('✅ Session found (client):', {
+              userId: data.session.user.id,
+              expiresAt: new Date(data.session.expires_at! * 1000).toISOString(),
+              provider: data.session.user.app_metadata?.provider
+            })
+            setSession(data.session)
+            setUser(data.session.user)
+            try { await ensureProfile(data.session.user) } catch (e) { console.warn('ensureProfile on bootstrap failed:', e) }
+            bumpAuthEpoch()
+          } else {
+            console.log('ℹ️ No session found during bootstrap')
+            const ok = await rehydrateFromStorage()
+            if (ok) bumpAuthEpoch()
+          }
         }
       } finally {
         clearTimeout(safety)
@@ -200,9 +223,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : undefined
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined }
+        options: { redirectTo: origin ? `${origin}/auth/callback` : undefined }
       })
       if (error) setError(error.message)
     } finally {
@@ -226,7 +250,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     setError(null)
-    await supabase.auth.signOut()
+    try { await fetch('/api/auth/signout', { method: 'POST' }) } catch {}
+    await supabase.auth.signOut().catch(() => {})
+    setSession(null)
+    setUser(null)
+    bumpAuthEpoch()
   }, [])
 
   // Expose minimal controls for prod debugging even if diagnostics are disabled

@@ -1,6 +1,6 @@
 // lib/supabaseClient.ts
-import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 // Build a resilient Supabase client with a 401 retry on token refresh.
 // If the access token expires while the tab is backgrounded, the first
@@ -69,21 +69,20 @@ const resilientFetch: typeof fetch = async (input: RequestInfo | URL, init?: Req
 }
 
 export const supabase = (() => {
-  const client = createClient(
+  const client = createClientComponentClient(
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
     {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true, // handles OAuth redirect
+        detectSessionInUrl: false, // using OAuth code flow with /auth/callback
       },
       global: {
         fetch: resilientFetch,
       },
-      // db: { schema: 'public' }, // optional
-    }
-  )
+    } as any
+  ) as unknown as SupabaseClient
   clientRef = client
   return client
 })()
