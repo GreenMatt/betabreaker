@@ -23,15 +23,6 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
 
   const isPublic = PUBLIC_PATHS.has(pathname || '')
 
-  // While resolving session
-  if (!ready && !(pathname && ADMIN_PATHS.has(pathname))) {
-    return (
-      <div className="min-h-[60vh] grid place-items-center">
-        <div className="animate-pulse text-base-subtext">Loading…</div>
-      </div>
-    )
-  }
-
   // If redirecting away, show a friendly placeholder instead of blank
   if (ready && !user && !isPublic && !(pathname && ADMIN_PATHS.has(pathname))) {
     return (

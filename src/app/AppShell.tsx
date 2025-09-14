@@ -7,6 +7,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import UserNav from '@/components/UserNav'
 import Logo from '@/components/Logo'
 import Stabilizer from '@/components/Stabilizer'
+import VisibilityRefresher from '@/components/VisibilityRefresher'
 import { usePageVisibility } from '@/lib/usePageVisibility'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <AuthProvider>
       <BadgeAwardProvider>
         <Stabilizer />
+        <VisibilityRefresher />
         <RouteGuard>
           <ErrorBoundary>
           <div className="max-w-screen-md mx-auto px-4 pb-24">

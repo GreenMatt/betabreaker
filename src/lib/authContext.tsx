@@ -204,7 +204,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const onVis = async () => {
       if (document.hidden) return
       const now = Date.now()
-      if (now - lastVisRefresh < 60_000) return // 60s cooldown
       lastVisRefresh = now
       try {
         await recover()
@@ -227,7 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: origin ? `${origin}/auth/callback` : undefined,
+          redirectTo: origin ? `${origin}/api/auth/callback` : undefined,
           // Ensure authorization code (PKCE) flow instead of implicit hash tokens
           flowType: 'pkce' as any,
         }
@@ -314,3 +313,4 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
+

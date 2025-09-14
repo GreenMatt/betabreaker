@@ -1,5 +1,6 @@
 "use client"
-import { useEffect, useMemo, useState } from 'react'
+
+import { useAuth } from '@/lib/authContext'
 import Link from 'next/link'
 import { VideoAddForm, VideoPreview, isSupportedVideoUrl } from './VideoEmbed'
 import { useSearchParams } from 'next/navigation'
@@ -12,7 +13,8 @@ type Climb = { id: string; name: string; grade: number | null; type: 'boulder'|'
 export default function ClimbDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
   const qp = useSearchParams()
-  const openLog = qp?.get('log') === '1'
+  
+  const { authEpoch } = useAuth()
   const [climb, setClimb] = useState<Climb | null>(null)
   const [photos, setPhotos] = useState<Array<{ id: string, image_base64: string | null }>>([])
   const [videos, setVideos] = useState<Array<{ id: string, url: string, user_id?: string | null }>>([])
@@ -197,8 +199,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
               <div key={s.id} className="flex items-start gap-3 group/comment">
                 {/* Setter Avatar */}
                 {s.user?.profile_photo ? (
-                  <img 
-                    src={s.user.profile_photo} 
+                  <img src={s.user.profile_photo} onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }} 
                     alt="Route Setter" 
                     className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
                   />
@@ -344,8 +345,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
               <div className="flex items-start gap-3 group/comment">
                 {/* Comment Avatar */}
                 {c.user?.profile_photo ? (
-                  <img 
-                    src={c.user.profile_photo} 
+                  <img src={c.user.profile_photo} onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }} 
                     alt="Profile" 
                     className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
                   />
@@ -388,8 +388,7 @@ export default function ClimbDetailPage({ params }: { params: { id: string } }) 
                     <div key={r.id} className="flex items-start gap-3 group/comment">
                       {/* Reply Avatar */}
                       {r.user?.profile_photo ? (
-                        <img 
-                          src={r.user.profile_photo} 
+                        <img src={r.user.profile_photo} onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }} 
                           alt="Profile" 
                           className="w-7 h-7 rounded-full object-cover border border-gray-200 flex-shrink-0"
                         />
@@ -567,6 +566,8 @@ function StarRating({ value, onChange }: { value: 1|2|3|4|5, onChange: (v: 1|2|3
     </div>
   )
 }
+
+
 
 
 

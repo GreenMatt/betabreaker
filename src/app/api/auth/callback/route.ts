@@ -5,21 +5,13 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const code = url.searchParams.get('code')
-
   if (code) {
     const supabase = createRouteHandlerClient({ cookies })
-    try {
-      await supabase.auth.exchangeCodeForSession(code)
-    } catch {}
+    try { await supabase.auth.exchangeCodeForSession(code) } catch {}
   }
-
   const redirectTo = url.searchParams.get('next') || '/'
   return NextResponse.redirect(new URL(redirectTo, req.url))
 }
 
-export async function POST(req: Request) {
-  // Some providers may POST back; handle both
-  return GET(req)
-}
-
 export const dynamic = 'force-dynamic'
+

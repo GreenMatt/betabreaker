@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/authContext'
 import { supabase } from '@/lib/supabaseClient'
 
 type LeaderboardType = 'points' | 'sends' | 'grade' | 'active'
@@ -32,10 +33,11 @@ export default function LeaderboardsPage() {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all_time')
   const [leaders, setLeaders] = useState<LeaderEntry[]>([])
   const [loading, setLoading] = useState(false)
+  const { authEpoch } = useAuth()
 
   useEffect(() => {
     loadLeaderboard()
-  }, [activeType, timePeriod])
+  }, [activeType, timePeriod, authEpoch])
 
   async function loadLeaderboard() {
     setLoading(true)
@@ -460,4 +462,5 @@ export default function LeaderboardsPage() {
     </div>
   )
 }
+
 
