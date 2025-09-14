@@ -6,7 +6,8 @@
       "Bash(npm run dev:*)",
       "Bash(node:*)",
       "Bash(git rev-parse:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

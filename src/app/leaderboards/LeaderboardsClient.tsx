@@ -1,8 +1,5 @@
 "use client"
-import { useEffect, useState } from 'react'
-import { useAuth } from '@/lib/authContext'
-import { useFocusTick } from '@/lib/useFocusTick'
-import { supabase } from '@/lib/supabaseClient'
+import { useState } from 'react'
 
 type LeaderboardType = 'points' | 'sends' | 'grade' | 'active'
 type TimePeriod = 'all_time' | 'this_month' | 'this_week'
@@ -25,267 +22,41 @@ const LEADERBOARD_CONFIGS = {
 
 const TIME_PERIODS = {
   all_time: 'All Time',
-  this_month: 'This Month', 
+  this_month: 'This Month',
   this_week: 'This Week'
 }
 
-export default function LeaderboardsPage() {
-  const [activeType, setActiveType] = useState<LeaderboardType>('points')
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('all_time')
-  const [leaders, setLeaders] = useState<LeaderEntry[]>([])
+interface LeaderboardsClientProps {
+  initialLeaders: LeaderEntry[]
+  initialType: LeaderboardType
+  initialPeriod: TimePeriod
+}
+
+export default function LeaderboardsClient({
+  initialLeaders,
+  initialType = 'points',
+  initialPeriod = 'all_time'
+}: LeaderboardsClientProps) {
+  const [activeType, setActiveType] = useState<LeaderboardType>(initialType)
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>(initialPeriod)
+  const [leaders, setLeaders] = useState<LeaderEntry[]>(initialLeaders)
   const [loading, setLoading] = useState(false)
-  const { authEpoch } = useAuth()
-  const focusTick = useFocusTick(250)
 
-  useEffect(() => {
-    loadLeaderboard()
-  }, [activeType, timePeriod, authEpoch, focusTick])
-
-  async function loadLeaderboard() {
-    setLoading(true)
-    try {
-      // Build time filter
-      let timeFilter = ''
-      if (timePeriod === 'this_month') {
-        const startOfMonth = new Date()
-        startOfMonth.setDate(1)
-        startOfMonth.setHours(0, 0, 0, 0)
-        timeFilter = startOfMonth.toISOString()
-      } else if (timePeriod === 'this_week') {
-        const startOfWeek = new Date()
-        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
-        startOfWeek.setHours(0, 0, 0, 0)
-        timeFilter = startOfWeek.toISOString()
-      }
-
-      let leaderData: LeaderEntry[] = []
-
-      if (activeType === 'sends') {
-        // Most Sends Leaderboard
-        let query = supabase
-          .from('climb_logs')
-          .select(`
-            user_id,
-            users!inner(name, profile_photo, private_profile),
-            climbs!inner(grade)
-          `)
-          .in('attempt_type', ['sent', 'flashed'])
-          .eq('users.private_profile', false)
-        
-        if (timeFilter) {
-          query = query.gte('date', timeFilter)
-        }
-
-        const { data, error } = await query
-
-        if (error) throw error
-
-        // Group by user and calculate sends
-        const userStats: Record<string, { name: string | null, profile_photo: string | null, sends: number, totalGrade: number }> = {}
-        
-        for (const log of data || []) {
-          const userId = log.user_id
-          if (!userStats[userId]) {
-            userStats[userId] = {
-              name: (log.users as any).name,
-              profile_photo: (log.users as any).profile_photo,
-              sends: 0,
-              totalGrade: 0
-            }
-          }
-          userStats[userId].sends += 1
-          userStats[userId].totalGrade += (log.climbs as any).grade || 0
-        }
-
-        leaderData = Object.entries(userStats)
-          .map(([userId, stats], index) => ({
-            rank: index + 1,
-            user_id: userId,
-            name: stats.name,
-            profile_photo: stats.profile_photo,
-            value: stats.sends,
-            extra_info: `Avg grade: ${(stats.totalGrade / stats.sends).toFixed(1)}`
-          }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 50)
-          .map((item, index) => ({ ...item, rank: index + 1 }))
-
-      } else if (activeType === 'grade') {
-        // Highest Grade Leaderboard
-        let query = supabase
-          .from('climb_logs')
-          .select(`
-            user_id,
-            users!inner(name, profile_photo, private_profile),
-            climbs!inner(grade)
-          `)
-          .in('attempt_type', ['sent', 'flashed'])
-          .eq('users.private_profile', false)
-        
-        if (timeFilter) {
-          query = query.gte('date', timeFilter)
-        }
-
-        const { data, error } = await query
-
-        if (error) throw error
-
-        // Group by user and find max grade
-        const userStats: Record<string, { name: string | null, profile_photo: string | null, maxGrade: number, sends: number }> = {}
-        
-        for (const log of data || []) {
-          const userId = log.user_id
-          const grade = (log.climbs as any).grade || 0
-          if (!userStats[userId]) {
-            userStats[userId] = {
-              name: (log.users as any).name,
-              profile_photo: (log.users as any).profile_photo,
-              maxGrade: grade,
-              sends: 0
-            }
-          }
-          userStats[userId].maxGrade = Math.max(userStats[userId].maxGrade, grade)
-          userStats[userId].sends += 1
-        }
-
-        leaderData = Object.entries(userStats)
-          .map(([userId, stats], index) => ({
-            rank: index + 1,
-            user_id: userId,
-            name: stats.name,
-            profile_photo: stats.profile_photo,
-            value: stats.maxGrade,
-            extra_info: `${stats.sends} total sends`
-          }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 50)
-          .map((item, index) => ({ ...item, rank: index + 1 }))
-
-      } else if (activeType === 'points') {
-        // Points Leaderboard
-        let query = supabase
-          .from('climb_logs')
-          .select(`
-            user_id,
-            users!inner(name, profile_photo, private_profile),
-            climbs!inner(grade, type)
-          `)
-          .in('attempt_type', ['sent', 'flashed'])
-          .eq('users.private_profile', false)
-        
-        if (timeFilter) {
-          query = query.gte('date', timeFilter)
-        }
-
-        const { data, error } = await query
-
-        if (error) throw error
-
-        // Calculate points for each user
-        const userStats: Record<string, { name: string | null, profile_photo: string | null, points: number, sends: number }> = {}
-        
-        for (const log of data || []) {
-          const userId = log.user_id
-          const climb = log.climbs as any
-          const grade = climb.grade || 0
-          
-          // Point calculation based on climb type
-          let points = 0
-          switch (climb.type) {
-            case 'boulder': points = grade * 10; break
-            case 'top_rope': points = grade * 5; break
-            case 'lead': points = grade * 15; break
-            default: points = grade * 10; break
-          }
-          
-          if (!userStats[userId]) {
-            userStats[userId] = {
-              name: (log.users as any).name,
-              profile_photo: (log.users as any).profile_photo,
-              points: 0,
-              sends: 0
-            }
-          }
-          userStats[userId].points += points
-          userStats[userId].sends += 1
-        }
-
-        leaderData = Object.entries(userStats)
-          .map(([userId, stats], index) => ({
-            rank: index + 1,
-            user_id: userId,
-            name: stats.name,
-            profile_photo: stats.profile_photo,
-            value: stats.points,
-            extra_info: `${stats.sends} sends`
-          }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 50)
-          .map((item, index) => ({ ...item, rank: index + 1 }))
-
-      } else if (activeType === 'active') {
-        // Most Active Days Leaderboard
-        let query = supabase
-          .from('climb_logs')
-          .select(`
-            user_id,
-            date,
-            users!inner(name, profile_photo, private_profile)
-          `)
-          .in('attempt_type', ['sent', 'flashed'])
-          .eq('users.private_profile', false)
-        
-        if (timeFilter) {
-          query = query.gte('date', timeFilter)
-        }
-
-        const { data, error } = await query
-
-        if (error) throw error
-
-        // Count unique active days per user
-        const userStats: Record<string, { name: string | null, profile_photo: string | null, activeDays: Set<string>, lastActive: string }> = {}
-        
-        for (const log of data || []) {
-          const userId = log.user_id
-          const date = new Date(log.date).toISOString().split('T')[0]
-          
-          if (!userStats[userId]) {
-            userStats[userId] = {
-              name: (log.users as any).name,
-              profile_photo: (log.users as any).profile_photo,
-              activeDays: new Set(),
-              lastActive: log.date
-            }
-          }
-          userStats[userId].activeDays.add(date)
-          if (new Date(log.date) > new Date(userStats[userId].lastActive)) {
-            userStats[userId].lastActive = log.date
-          }
-        }
-
-        leaderData = Object.entries(userStats)
-          .map(([userId, stats], index) => ({
-            rank: index + 1,
-            user_id: userId,
-            name: stats.name,
-            profile_photo: stats.profile_photo,
-            value: stats.activeDays.size,
-            extra_info: `Last: ${new Date(stats.lastActive).toLocaleDateString()}`
-          }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 50)
-          .map((item, index) => ({ ...item, rank: index + 1 }))
-      }
-
-      setLeaders(leaderData)
-    } catch (error) {
-      console.error('Failed to load leaderboard:', error)
-      setLeaders([])
-    } finally {
-      setLoading(false)
-    }
+  // This will trigger a page refresh with new URL params
+  function handleTypeChange(newType: LeaderboardType) {
+    const url = new URL(window.location.href)
+    url.searchParams.set('type', newType)
+    url.searchParams.set('period', timePeriod)
+    window.location.href = url.toString()
   }
+
+  function handlePeriodChange(newPeriod: TimePeriod) {
+    const url = new URL(window.location.href)
+    url.searchParams.set('type', activeType)
+    url.searchParams.set('period', newPeriod)
+    window.location.href = url.toString()
+  }
+
 
   function formatValue(value: number, type: LeaderboardType): string {
     switch (type) {
@@ -337,7 +108,7 @@ export default function LeaderboardsPage() {
                   ? 'bg-neon-purple text-white shadow-lg'
                   : 'text-gray-300 hover:text-white hover:bg-white/10'
               }`}
-              onClick={() => setTimePeriod(key as TimePeriod)}
+              onClick={() => handlePeriodChange(key as TimePeriod)}
             >
               {label}
             </button>
@@ -355,7 +126,7 @@ export default function LeaderboardsPage() {
                 ? `bg-gradient-to-r ${cfg.color} border-white/20 shadow-lg scale-105`
                 : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10'
             }`}
-            onClick={() => setActiveType(key as LeaderboardType)}
+            onClick={() => handleTypeChange(key as LeaderboardType)}
           >
             <div className="text-2xl mb-1">{cfg.icon}</div>
             <div className="text-sm font-medium text-gray-800">{cfg.label}</div>
