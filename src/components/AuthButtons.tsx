@@ -27,9 +27,6 @@ export default function AuthButtons() {
         <button className="w-full rounded-lg border border-black/10 bg-white text-base-text px-4 py-2 hover:bg-black/5 flex items-center justify-center gap-2" disabled={loading} onClick={() => signInWith('google')}>
           <span>Sign in with Google</span>
         </button>
-        <button className="w-full rounded-lg border border-black/10 bg-white text-base-text px-4 py-2 hover:bg-black/5 flex items-center justify-center gap-2" disabled={loading} onClick={() => signInWith('facebook')}>
-          <span>Sign in with Facebook</span>
-        </button>
       </div>
       <div className="text-center text-xs text-base-subtext">or sign in with e‑mail</div>
       <form onSubmit={onEmailSubmit} className="grid gap-2">

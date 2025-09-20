@@ -6,7 +6,7 @@ import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
 import { startDiagnostics } from '@/lib/authDiagnostics'
 
-type Provider = 'google' | 'facebook'
+type Provider = 'google'
 
 type AuthContextType = {
   user: User | null
