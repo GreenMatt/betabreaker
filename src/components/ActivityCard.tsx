@@ -14,13 +14,14 @@ type BaseActivity = {
 }
 
 type OwnActivity = BaseActivity & {
-  climb: { 
+  climb: {
     name: string
     grade: number | null
     type: string
     color: string | null
     gym: { name: string }
   }
+  user?: { profile_photo: string | null }
 }
 
 type FollowActivity = BaseActivity & {
@@ -91,6 +92,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
       checkFollowingStatus()
     }
   }, [activity.id])
+
 
   async function loadComments() {
     const { data } = await supabase
@@ -167,9 +169,12 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
       }
       
       if (comment.trim()) {
+        const userPhoto = variant === 'own' && (activity as OwnActivity).user?.profile_photo
+          ? `data:image/*;base64,${(activity as OwnActivity).user?.profile_photo}`
+          : null
         setLocalComments(prev => [{
           user_name: 'You',
-          profile_photo: null,
+          profile_photo: userPhoto,
           comment: comment.trim(),
           created_at: new Date().toISOString()
         }, ...prev])
@@ -217,9 +222,11 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
     switch (variant) {
       case 'own':
         const own = activity as OwnActivity
+        const userPhoto = own.user?.profile_photo ? `data:image/*;base64,${own.user.profile_photo}` : null
+        console.log('[DEBUG] getDisplayData for own variant, userPhoto:', userPhoto?.substring(0, 50) + '...')
         return {
           userName: 'You',
-          userPhoto: null,
+          userPhoto: userPhoto,
           climbName: own.climb.name,
           climbId: activity.climb_id || '',
           gymName: own.climb.gym.name,

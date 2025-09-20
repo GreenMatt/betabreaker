@@ -2,7 +2,7 @@
 import { getServerSupabase } from '@/lib/supabaseServer'
 import GymDetailClient from './GymDetailClient'
 
-type Gym = { id: string; name: string; location: string | null }
+type Gym = { id: string; name: string; location: string | null; profile_photo: string | null }
 type Climb = { id: string; name: string; grade: number | null; type: 'boulder' | 'top_rope' | 'lead'; location: string | null; setter: string | null; color: string | null; dyno: boolean | null; section_id: string | null; section?: { name: string } | null; community_grade?: number | null }
 type Section = { id: string; name: string }
 
@@ -23,8 +23,8 @@ export default async function GymDetailPage({ params }: { params: { id: string }
     try {
       // Load gym, climbs, admin status, sections, and activity in parallel
       const [gRes, cRes, aRes, sRes, actRes, adminRes] = await Promise.all([
-        supabase.from('gyms').select('id,name,location').eq('id', gid).maybeSingle(),
-        supabase.from('climbs').select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)').eq('gym_id', gid).order('created_at', { ascending: false }).limit(12),
+        supabase.from('gyms').select('id,name,location,profile_photo').eq('id', gid).maybeSingle(),
+        supabase.from('climbs').select('id,name,grade,type,location,setter,color,dyno,section_id,active_status,section:gym_sections(name)').eq('gym_id', gid).order('created_at', { ascending: false }).limit(6),
         supabase.rpc('is_gym_admin', { gid }),
         supabase.from('gym_sections').select('id,name').eq('gym_id', gid).order('name', { ascending: true }),
         supabase.rpc('get_gym_activity', { gid, page_size: 6, page: 0 }),

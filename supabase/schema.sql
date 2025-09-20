@@ -21,6 +21,7 @@ create table if not exists public.gyms (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   location text,
+  profile_photo text,
   settings jsonb not null default '{}'::jsonb,
   created_at timestamptz default now()
 );

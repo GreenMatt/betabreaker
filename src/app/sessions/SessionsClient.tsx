@@ -1,5 +1,5 @@
 "use client"
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 // Lazy-load Supabase on the client to avoid Edge runtime pulling Node builtins
 const getSupabase = async () => (await import('@/lib/supabaseClient')).supabase
@@ -18,6 +18,7 @@ type Session = {
   duration_mins: number | null
   activity_type: 'Climb' | 'Board' | 'Hang' | 'Strength' | 'Cardio' | 'Yoga' | 'Boulder' | 'Top Rope' | 'Lead' | 'Strength Training' | 'Other'
   notes: string | null
+  feeling: 'bad' | 'good' | 'great' | null
 }
 
 const ACTIVITIES: Array<{ key: Session['activity_type']; label: string; color: string; bg: string }> = [
@@ -86,6 +87,23 @@ function Icon({ type, size = 'md' }: { type: NewType, size?: 'sm' | 'md' | 'lg' 
   )
 }
 
+function FeelingIcon({ feeling, size = 'md' }: { feeling: 'bad' | 'good' | 'great' | null, size?: 'sm' | 'md' | 'lg' }) {
+  const iconSize = size === 'lg' ? 'h-6 w-6' : size === 'md' ? 'h-5 w-5' : 'h-4 w-4'
+
+  if (!feeling) return null
+
+  switch (feeling) {
+    case 'bad':
+      return <span className={`${iconSize} text-red-400`}>😞</span>
+    case 'good':
+      return <span className={`${iconSize} text-yellow-400`}>😊</span>
+    case 'great':
+      return <span className={`${iconSize} text-green-400`}>🤩</span>
+    default:
+      return null
+  }
+}
+
 interface SessionsClientProps {
   initialItems: Session[]
   userId: string
@@ -105,6 +123,7 @@ export default function SessionsClient({
   const [activity, setActivity] = useState<Session['activity_type']>('Climb')
   const [duration, setDuration] = useState<string>('60')
   const [notes, setNotes] = useState('')
+  const [feeling, setFeeling] = useState<'bad' | 'good' | 'great' | null>(null)
 
   const today = new Date()
   const [viewYear, setViewYear] = useState<number>(initialYear)
@@ -118,10 +137,45 @@ export default function SessionsClient({
   const [sessionsPage, setSessionsPage] = useState(0)
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [sessionsHasMore, setSessionsHasMore] = useState(true)
+  const [showAddForm, setShowAddForm] = useState(false)
+
+  // State for all sessions in the month (for calendar display)
+  const [allMonthSessions, setAllMonthSessions] = useState<Session[]>([])
+  const [calendarLoading, setCalendarLoading] = useState(false)
+
+  // Load all sessions for calendar when month/year changes
+  useEffect(() => {
+    loadAllMonthSessions()
+  }, [viewYear, viewMonth, userId])
+
+  async function loadAllMonthSessions() {
+    setCalendarLoading(true)
+    try {
+      const supabase = await getSupabase()
+      const monthStartYMD = toLocalYMD(new Date(viewYear, viewMonth, 1))
+      const monthEndYMD = toLocalYMD(new Date(viewYear, viewMonth + 1, 0))
+
+      const { data, error } = await supabase
+        .from('training_sessions')
+        .select('id, date, duration_mins, activity_type, notes, feeling')
+        .eq('user_id', userId)
+        .gte('date', monthStartYMD)
+        .lte('date', monthEndYMD)
+        .order('date', { ascending: false })
+
+      if (!error && data) {
+        setAllMonthSessions(data as Session[])
+      }
+    } catch (e) {
+      console.error('Failed to load all month sessions for calendar:', e)
+    } finally {
+      setCalendarLoading(false)
+    }
+  }
 
   const grouped = useMemo(() => {
     const m = new Map<string, Session[]>()
-    for (const s of items) {
+    for (const s of allMonthSessions) {
       // Use the date string directly to avoid timezone issues
       const key = s.date.slice(0, 10)
       const arr = m.get(key) || []
@@ -129,7 +183,7 @@ export default function SessionsClient({
       m.set(key, arr)
     }
     return m
-  }, [items])
+  }, [allMonthSessions])
 
   // Handle month/year changes with page refresh
   function handleMonthYearChange(newYear: number, newMonth: number) {
@@ -147,13 +201,17 @@ export default function SessionsClient({
       const supabase = await getSupabase()
       const { data, error } = await supabase
         .from('training_sessions')
-        .insert({ user_id: userId, date: date, duration_mins: dur, activity_type: activity, notes })
-        .select('id, date, duration_mins, activity_type, notes')
+        .insert({ user_id: userId, date: date, duration_mins: dur, activity_type: activity, notes, feeling })
+        .select('id, date, duration_mins, activity_type, notes, feeling')
         .single()
       if (error) throw error
       setItems(prev => [data as any, ...prev])
-      // reset note
+      // Refresh calendar data to show new session
+      loadAllMonthSessions()
+      // reset form and close
       setNotes('')
+      setFeeling(null)
+      setShowAddForm(false)
     } catch (e: any) {
       alert(e?.message || 'Failed to add session')
     }
@@ -169,7 +227,7 @@ export default function SessionsClient({
       const offset = (sessionsPage + 1) * pageSize
       const { data, error } = await supabase
         .from('training_sessions')
-        .select('id, date, duration_mins, activity_type, notes')
+        .select('id, date, duration_mins, activity_type, notes, feeling')
         .eq('user_id', userId)
         .gte('date', monthStartYMD)
         .lte('date', monthEndYMD)
@@ -281,8 +339,19 @@ export default function SessionsClient({
       <h1 className="text-xl font-bold">Training Log</h1>
 
       <div className="card">
-        <h2 className="font-semibold mb-3">Add Session</h2>
-        <div className="space-y-3">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-semibold">Add Session</h2>
+          <button
+            className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-sm"
+            onClick={() => setShowAddForm(!showAddForm)}
+          >
+            {showAddForm ? 'Hide' : 'Show'}
+          </button>
+        </div>
+
+        {showAddForm && (
+        <>
+        <div className="space-y-3 mt-3">
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
             <div className="min-w-0">
               <label className="text-sm block">
@@ -317,6 +386,34 @@ export default function SessionsClient({
               <input className="input w-full min-w-0" placeholder="Optional notes" value={notes} onChange={e => setNotes(e.target.value)} />
             </label>
           </div>
+          <div>
+            <label className="text-sm block">
+              <span className="block mb-1 text-base-subtext">How did it feel?</span>
+              <div className="flex gap-2">
+                {[
+                  { key: 'bad' as const, label: 'Bad', emoji: '😞', color: 'hover:bg-red-500/20 border-red-500/20' },
+                  { key: 'good' as const, label: 'Good', emoji: '😊', color: 'hover:bg-yellow-500/20 border-yellow-500/20' },
+                  { key: 'great' as const, label: 'Great', emoji: '🤩', color: 'hover:bg-green-500/20 border-green-500/20' }
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    className={`
+                      flex-1 px-3 py-2 rounded-md border transition-all duration-200 flex items-center justify-center gap-2 text-sm
+                      ${feeling === f.key
+                        ? `bg-${f.key === 'bad' ? 'red' : f.key === 'good' ? 'yellow' : 'green'}-500/20 border-${f.key === 'bad' ? 'red' : f.key === 'good' ? 'yellow' : 'green'}-500/50`
+                        : `border-white/10 ${f.color}`
+                      }
+                    `}
+                    onClick={() => setFeeling(feeling === f.key ? null : f.key)}
+                  >
+                    <span className="text-lg">{f.emoji}</span>
+                    <span>{f.label}</span>
+                  </button>
+                ))}
+              </div>
+            </label>
+          </div>
         </div>
         <div className="mt-4">
           <button className="btn-primary w-full sm:w-auto" onClick={addSession} disabled={loading}>Save Session</button>
@@ -331,6 +428,8 @@ export default function SessionsClient({
             ))}
           </div>
         </div>
+        </>
+        )}
       </div>
 
       <div className="card">
@@ -405,6 +504,31 @@ export default function SessionsClient({
                         <input type="number" min={0} placeholder="Duration (mins)" className="input text-sm" value={String((editDraft.duration_mins ?? s.duration_mins) ?? 0)} onChange={e => setEditDraft(d => ({ ...d, duration_mins: parseInt(e.target.value || '0', 10) }))} />
                         <input className="input text-sm" placeholder="Notes" value={(editDraft.notes as string) ?? (s.notes || '')} onChange={e => setEditDraft(d => ({ ...d, notes: e.target.value }))} />
                       </div>
+                      <div className="mb-3">
+                        <span className="block mb-2 text-xs text-base-subtext">How did it feel?</span>
+                        <div className="flex gap-2">
+                          {[
+                            { key: 'bad' as const, emoji: '😞' },
+                            { key: 'good' as const, emoji: '😊' },
+                            { key: 'great' as const, emoji: '🤩' }
+                          ].map(f => (
+                            <button
+                              key={f.key}
+                              type="button"
+                              className={`
+                                px-2 py-1 rounded border text-xs transition-all duration-200
+                                ${(editDraft.feeling ?? s.feeling) === f.key
+                                  ? 'bg-neon-purple/20 border-neon-purple/50'
+                                  : 'border-white/10 hover:border-white/20'
+                                }
+                              `}
+                              onClick={() => setEditDraft(d => ({ ...d, feeling: (editDraft.feeling ?? s.feeling) === f.key ? null : f.key }))}
+                            >
+                              {f.emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <div className="flex items-center justify-end gap-2">
                         <button className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors" onClick={() => { setEditingId(null); setEditDraft({}) }}>Cancel</button>
                         <button className="px-3 py-1 bg-neon-purple hover:bg-neon-purple/80 rounded text-xs font-medium transition-colors" onClick={async () => {
@@ -414,13 +538,14 @@ export default function SessionsClient({
                               date: (editDraft.date as string) || s.date.slice(0, 10),
                               activity_type: (editDraft.activity_type as Session['activity_type']) || s.activity_type,
                               duration_mins: (typeof editDraft.duration_mins === 'number' ? editDraft.duration_mins : s.duration_mins) || 0,
-                              notes: (editDraft.notes as string) ?? s.notes
+                              notes: (editDraft.notes as string) ?? s.notes,
+                              feeling: editDraft.feeling !== undefined ? editDraft.feeling : s.feeling
                             }
                             const { error, data } = await supabase
                               .from('training_sessions')
                               .update(payload)
                               .eq('id', s.id)
-                              .select('id, date, duration_mins, activity_type, notes')
+                              .select('id, date, duration_mins, activity_type, notes, feeling')
                               .single()
                             if (error) throw error
                             setItems(prev => prev.map(x => x.id === s.id ? (data as any) : x))
@@ -443,6 +568,7 @@ export default function SessionsClient({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-gray-800 text-sm">{activityType}</span>
+                          {s.feeling && <FeelingIcon feeling={s.feeling} size="sm" />}
                           {isToday && (
                             <span className="text-xs px-1.5 py-0.5 rounded-full bg-neon-purple/20 text-neon-purple">
                               Today
@@ -506,29 +632,75 @@ export default function SessionsClient({
         )}
       </div>
 
-      <Stats items={items} />
+      <Stats userId={userId} viewYear={viewYear} viewMonth={viewMonth} />
+
+      <Benchmarks userId={userId} />
     </div>
   )
 }
 
-function Stats({ items }: { items: Session[] }) {
+function Stats({ userId, viewYear, viewMonth }: { userId: string, viewYear: number, viewMonth: number }) {
+  const [allSessions, setAllSessions] = useState<Session[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Load all sessions for the month (not paginated)
+  useEffect(() => {
+    async function loadAllSessions() {
+      setLoading(true)
+      try {
+        const supabase = await getSupabase()
+        const monthStartYMD = toLocalYMD(new Date(viewYear, viewMonth, 1))
+        const monthEndYMD = toLocalYMD(new Date(viewYear, viewMonth + 1, 0))
+
+        const { data, error } = await supabase
+          .from('training_sessions')
+          .select('id, date, duration_mins, activity_type, notes, feeling')
+          .eq('user_id', userId)
+          .gte('date', monthStartYMD)
+          .lte('date', monthEndYMD)
+          .order('date', { ascending: false })
+
+        if (!error && data) {
+          setAllSessions(data as Session[])
+        }
+      } catch (e) {
+        console.error('Failed to load all sessions for stats:', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadAllSessions()
+  }, [userId, viewYear, viewMonth])
+
   const totals = useMemo(() => {
     const counts = new Map<NewType, { count: number, minutes: number }>()
     for (const a of ['Climb','Board','Hang','Strength','Cardio','Yoga'] as NewType[]) {
       counts.set(a, { count: 0, minutes: 0 })
     }
-    for (const s of items) {
+    for (const s of allSessions) {
       const key = normalize(s.activity_type)
       const entry = counts.get(key)!
       entry.count += 1
       entry.minutes += s.duration_mins || 0
     }
     return counts
-  }, [items])
+  }, [allSessions])
 
-  const totalSessions = items.length
-  const totalMinutes = items.reduce((sum, s) => sum + (s.duration_mins || 0), 0)
+  const totalSessions = allSessions.length
+  const totalMinutes = allSessions.reduce((sum, s) => sum + (s.duration_mins || 0), 0)
   const maxCount = Math.max(...Array.from(totals.values()).map(v => v.count), 1)
+
+  if (loading) {
+    return (
+      <div className="card">
+        <h2 className="font-semibold mb-4">This Month Stats</h2>
+        <div className="text-center py-8 text-base-subtext">
+          <div className="text-2xl mb-2">⏳</div>
+          <div>Loading stats...</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="card">
@@ -583,6 +755,328 @@ function Stats({ items }: { items: Session[] }) {
           <div className="text-4xl mb-2">📊</div>
           <div>No training sessions this month yet.</div>
           <div className="text-sm">Add your first session to see stats!</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+type Benchmark = {
+  id: string
+  name: string
+  unit: string
+  current_max: number | null
+  target_max: number | null
+  date_achieved: string | null
+  notes: string | null
+}
+
+function Benchmarks({ userId }: { userId: string }) {
+  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([])
+  const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)
+  const [newBenchmark, setNewBenchmark] = useState({
+    name: '',
+    unit: 'lbs',
+    current_max: '',
+    target_max: '',
+    notes: ''
+  })
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<Partial<Benchmark>>({})
+
+  useEffect(() => {
+    loadBenchmarks()
+  }, [userId])
+
+  async function loadBenchmarks() {
+    setLoading(true)
+    try {
+      const supabase = await getSupabase()
+      const { data, error } = await supabase
+        .from('benchmarks')
+        .select('id, name, unit, current_max, target_max, date_achieved, notes')
+        .eq('user_id', userId)
+        .order('name')
+
+      if (!error && data) {
+        setBenchmarks(data as Benchmark[])
+      }
+    } catch (e) {
+      console.error('Failed to load benchmarks:', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function addBenchmark() {
+    if (!newBenchmark.name.trim()) return
+
+    try {
+      const supabase = await getSupabase()
+      const payload = {
+        user_id: userId,
+        name: newBenchmark.name.trim(),
+        unit: newBenchmark.unit,
+        current_max: newBenchmark.current_max ? parseFloat(newBenchmark.current_max) : null,
+        target_max: newBenchmark.target_max ? parseFloat(newBenchmark.target_max) : null,
+        notes: newBenchmark.notes.trim() || null,
+        date_achieved: newBenchmark.current_max ? new Date().toISOString().split('T')[0] : null
+      }
+
+      const { data, error } = await supabase
+        .from('benchmarks')
+        .insert(payload)
+        .select('id, name, unit, current_max, target_max, date_achieved, notes')
+        .single()
+
+      if (error) throw error
+      setBenchmarks(prev => [...prev, data as Benchmark].sort((a, b) => a.name.localeCompare(b.name)))
+      setNewBenchmark({ name: '', unit: 'lbs', current_max: '', target_max: '', notes: '' })
+      setAdding(false)
+    } catch (e: any) {
+      alert(e?.message || 'Failed to add benchmark')
+    }
+  }
+
+  async function updateBenchmark(benchmark: Benchmark) {
+    try {
+      const supabase = await getSupabase()
+      const payload = {
+        name: (editDraft.name ?? benchmark.name).trim(),
+        unit: editDraft.unit ?? benchmark.unit,
+        current_max: editDraft.current_max !== undefined ? editDraft.current_max : benchmark.current_max,
+        target_max: editDraft.target_max !== undefined ? editDraft.target_max : benchmark.target_max,
+        notes: editDraft.notes !== undefined ? editDraft.notes : benchmark.notes,
+        date_achieved: editDraft.current_max !== undefined && editDraft.current_max !== benchmark.current_max
+          ? new Date().toISOString().split('T')[0]
+          : benchmark.date_achieved
+      }
+
+      const { data, error } = await supabase
+        .from('benchmarks')
+        .update(payload)
+        .eq('id', benchmark.id)
+        .select('id, name, unit, current_max, target_max, date_achieved, notes')
+        .single()
+
+      if (error) throw error
+      setBenchmarks(prev => prev.map(b => b.id === benchmark.id ? data as Benchmark : b).sort((a, b) => a.name.localeCompare(b.name)))
+      setEditingId(null)
+      setEditDraft({})
+    } catch (e: any) {
+      alert(e?.message || 'Failed to update benchmark')
+    }
+  }
+
+  async function deleteBenchmark(id: string) {
+    if (!confirm('Delete this benchmark?')) return
+
+    try {
+      const supabase = await getSupabase()
+      const { error } = await supabase.from('benchmarks').delete().eq('id', id)
+      if (error) throw error
+      setBenchmarks(prev => prev.filter(b => b.id !== id))
+    } catch (e: any) {
+      alert(e?.message || 'Failed to delete benchmark')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="card">
+        <h2 className="font-semibold mb-4">Benchmarks</h2>
+        <div className="text-center py-8 text-base-subtext">
+          <div className="text-2xl mb-2">⏳</div>
+          <div>Loading benchmarks...</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold">Benchmarks</h2>
+        <button
+          className="btn-primary text-sm"
+          onClick={() => setAdding(!adding)}
+        >
+          {adding ? 'Cancel' : 'Add Benchmark'}
+        </button>
+      </div>
+
+      {adding && (
+        <div className="bg-white/5 rounded-lg p-4 mb-4 space-y-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <input
+              className="input text-sm"
+              placeholder="Exercise name (e.g., Bench Press)"
+              value={newBenchmark.name}
+              onChange={e => setNewBenchmark(prev => ({ ...prev, name: e.target.value }))}
+            />
+            <select
+              className="input text-sm"
+              value={newBenchmark.unit}
+              onChange={e => setNewBenchmark(prev => ({ ...prev, unit: e.target.value }))}
+            >
+              <option value="lbs">lbs</option>
+              <option value="kg">kg</option>
+              <option value="reps">reps</option>
+              <option value="seconds">seconds</option>
+              <option value="minutes">minutes</option>
+            </select>
+            <input
+              type="number"
+              step="0.1"
+              className="input text-sm"
+              placeholder="Current max"
+              value={newBenchmark.current_max}
+              onChange={e => setNewBenchmark(prev => ({ ...prev, current_max: e.target.value }))}
+            />
+            <input
+              type="number"
+              step="0.1"
+              className="input text-sm"
+              placeholder="Target max"
+              value={newBenchmark.target_max}
+              onChange={e => setNewBenchmark(prev => ({ ...prev, target_max: e.target.value }))}
+            />
+          </div>
+          <input
+            className="input text-sm w-full"
+            placeholder="Notes (optional)"
+            value={newBenchmark.notes}
+            onChange={e => setNewBenchmark(prev => ({ ...prev, notes: e.target.value }))}
+          />
+          <div className="flex gap-2">
+            <button className="btn-primary text-sm" onClick={addBenchmark}>
+              Save Benchmark
+            </button>
+            <button
+              className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-sm"
+              onClick={() => setAdding(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {benchmarks.length === 0 && (
+        <div className="text-center py-8 text-base-subtext">
+          <div className="text-4xl mb-2">🏋️</div>
+          <div>No benchmarks yet.</div>
+          <div className="text-sm">Add your first benchmark to track your progress!</div>
+        </div>
+      )}
+
+      {benchmarks.length > 0 && (
+        <div className="space-y-3">
+          {benchmarks.map(benchmark => (
+            <div key={benchmark.id} className="group border border-white/10 rounded-lg p-4 hover:border-white/20 transition-colors">
+              {editingId === benchmark.id ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                    <input
+                      className="input text-sm"
+                      value={(editDraft.name ?? benchmark.name) || ''}
+                      onChange={e => setEditDraft(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                    <select
+                      className="input text-sm"
+                      value={editDraft.unit ?? benchmark.unit}
+                      onChange={e => setEditDraft(prev => ({ ...prev, unit: e.target.value }))}
+                    >
+                      <option value="lbs">lbs</option>
+                      <option value="kg">kg</option>
+                      <option value="reps">reps</option>
+                      <option value="seconds">seconds</option>
+                      <option value="minutes">minutes</option>
+                    </select>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="input text-sm"
+                      placeholder="Current max"
+                      value={editDraft.current_max !== undefined ? editDraft.current_max : benchmark.current_max || ''}
+                      onChange={e => setEditDraft(prev => ({ ...prev, current_max: e.target.value ? parseFloat(e.target.value) : null }))}
+                    />
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="input text-sm"
+                      placeholder="Target max"
+                      value={editDraft.target_max !== undefined ? editDraft.target_max : benchmark.target_max || ''}
+                      onChange={e => setEditDraft(prev => ({ ...prev, target_max: e.target.value ? parseFloat(e.target.value) : null }))}
+                    />
+                  </div>
+                  <input
+                    className="input text-sm w-full"
+                    placeholder="Notes"
+                    value={editDraft.notes !== undefined ? editDraft.notes : benchmark.notes || ''}
+                    onChange={e => setEditDraft(prev => ({ ...prev, notes: e.target.value }))}
+                  />
+                  <div className="flex gap-2">
+                    <button className="btn-primary text-sm" onClick={() => updateBenchmark(benchmark)}>
+                      Save
+                    </button>
+                    <button
+                      className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-sm"
+                      onClick={() => { setEditingId(null); setEditDraft({}) }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-medium text-lg">{benchmark.name}</h3>
+                      {benchmark.current_max && (
+                        <span className="px-2 py-1 bg-neon-purple/20 text-neon-purple rounded text-sm font-medium">
+                          {benchmark.current_max} {benchmark.unit}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 text-sm text-base-subtext">
+                      {benchmark.target_max && (
+                        <span>Target: {benchmark.target_max} {benchmark.unit}</span>
+                      )}
+                      {benchmark.date_achieved && (
+                        <span>Achieved: {new Date(benchmark.date_achieved).toLocaleDateString()}</span>
+                      )}
+                    </div>
+
+                    {benchmark.notes && (
+                      <p className="text-sm text-gray-400 italic mt-2">"{benchmark.notes}"</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      className="p-1.5 rounded bg-white/10 hover:bg-white/20 transition-colors"
+                      onClick={() => { setEditingId(benchmark.id); setEditDraft({}) }}
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      className="p-1.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+                      onClick={() => deleteBenchmark(benchmark.id)}
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -39,6 +39,8 @@ export default async function FeedPage() {
       color: r.color,
       user_name: r.user_name,
       profile_photo: r.profile_photo,
+      bump_count: r.bump_count || 0,
+      bumped: Boolean(r.bumped),
     }))
   }
   return <FeedClient initialUserId={session?.user?.id ?? null} initialMe={initialMe as any} initialFollowing={initialFollowing as any} />

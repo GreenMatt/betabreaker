@@ -7,6 +7,7 @@ type Gym = {
   id: string
   name: string
   location: string | null
+  profile_photo: string | null
 }
 
 export default function GymClient({ initialGyms }: { initialGyms: Gym[] }) {
@@ -20,7 +21,7 @@ export default function GymClient({ initialGyms }: { initialGyms: Gym[] }) {
     ;(async () => {
       setLoading(true)
       setError(null)
-      const { data, error } = await supabase.from('gyms').select('id,name,location').order('created_at', { ascending: true })
+      const { data, error } = await supabase.from('gyms').select('id,name,location,profile_photo').order('created_at', { ascending: true })
       if (!mounted) return
       if (error) setError(error.message)
       else setGyms(data || [])
@@ -44,10 +45,26 @@ export default function GymClient({ initialGyms }: { initialGyms: Gym[] }) {
         )}
         <ul className="divide-y divide-white/5">
           {gyms.map(g => (
-            <li key={g.id} className="py-2 flex items-center justify-between">
-              <div>
-                <div className="font-medium">{g.name}</div>
-                {g.location && <div className="text-xs text-base-subtext">{g.location}</div>}
+            <li key={g.id} className="py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* Profile Photo */}
+                {g.profile_photo ? (
+                  <img
+                    src={`data:image/*;base64,${g.profile_photo}`}
+                    alt={`${g.name} profile`}
+                    className="w-12 h-12 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
+                    <span className="text-lg text-base-subtext">🏔️</span>
+                  </div>
+                )}
+
+                {/* Gym Info */}
+                <div>
+                  <div className="font-medium">{g.name}</div>
+                  {g.location && <div className="text-xs text-base-subtext">{g.location}</div>}
+                </div>
               </div>
               <Link className="text-sm text-neon-purple" href={`/gym/${g.id}`}>Open</Link>
             </li>

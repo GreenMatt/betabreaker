@@ -16,6 +16,7 @@ type Session = {
   duration_mins: number | null
   activity_type: 'Climb' | 'Board' | 'Hang' | 'Strength' | 'Cardio' | 'Yoga' | 'Boulder' | 'Top Rope' | 'Lead' | 'Strength Training' | 'Other'
   notes: string | null
+  feeling: 'bad' | 'good' | 'great' | null
 }
 
 interface SessionsPageProps {
@@ -38,7 +39,7 @@ export default async function SessionsPage({ searchParams }: SessionsPageProps) 
       const monthEndYMD = toLocalYMD(new Date(year, month + 1, 0))
       const { data, error } = await supabase
         .from('training_sessions')
-        .select('id, date, duration_mins, activity_type, notes')
+        .select('id, date, duration_mins, activity_type, notes, feeling')
         .eq('user_id', session.user.id)
         .gte('date', monthStartYMD)
         .lte('date', monthEndYMD)

@@ -18,25 +18,29 @@ type UserLite = { id: string, name: string | null, profile_photo: string | null 
 export default function ProfileClient({
   viewerId,
   initialProfile,
-  initialBadges,
+  initialEarnedBadges,
+  initialAvailableBadges,
   initialFollowing,
   initialFollowers,
 }: {
   viewerId: string | null
   initialProfile: Profile | null
-  initialBadges: Array<{ id: string, name: string, icon: string | null, description?: string | null }>
+  initialEarnedBadges: Array<{ id: string, name: string, icon: string | null, description?: string | null }>
+  initialAvailableBadges: Array<{ id: string, name: string, icon: string | null, description?: string | null }>
   initialFollowing: UserLite[]
   initialFollowers: UserLite[]
 }) {
   const router = useRouter()
   const focusTick = useFocusTick(250)
   const [profile, setProfile] = useState<Profile | null>(initialProfile)
-  const [badges] = useState(initialBadges)
+  const [earnedBadges] = useState(initialEarnedBadges)
+  const [availableBadges] = useState(initialAvailableBadges)
   const [following] = useState<UserLite[]>(initialFollowing)
   const [followers] = useState<UserLite[]>(initialFollowers)
   const [editingName, setEditingName] = useState<string>(initialProfile?.name || '')
   const [saving, setSaving] = useState(false)
   const [followTab, setFollowTab] = useState<'following'|'followers'>('following')
+  const [badgeTab, setBadgeTab] = useState<'earned'|'available'>('earned')
 
   const isOwner = useMemo(() => !!viewerId && !!profile && viewerId === profile.id, [viewerId, profile])
 
@@ -104,17 +108,39 @@ export default function ProfileClient({
       </section>
 
       <section className="card">
-        <h2 className="font-semibold mb-2">Badges</h2>
-        {badges.length === 0 && <p className="text-base-subtext">No badges yet.</p>}
-        {badges.length > 0 && (
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold">Badges</h2>
+          <div className="flex gap-2 text-sm">
+            <button className={`px-3 py-1 rounded ${badgeTab==='earned'?'bg-neon-purple text-white':'bg-white/10'}`} onClick={() => setBadgeTab('earned')}>Earned ({earnedBadges.length})</button>
+            <button className={`px-3 py-1 rounded ${badgeTab==='available'?'bg-neon-purple text-white':'bg-white/10'}`} onClick={() => setBadgeTab('available')}>Available ({availableBadges.length})</button>
+          </div>
+        </div>
+        {badgeTab === 'earned' && earnedBadges.length === 0 && <p className="text-base-subtext">No badges earned yet.</p>}
+        {badgeTab === 'available' && availableBadges.length === 0 && <p className="text-base-subtext">No badges available.</p>}
+        {badgeTab === 'earned' && earnedBadges.length > 0 && (
           <div className="grid grid-cols-3 gap-4">
-            {badges.map(b => (
+            {earnedBadges.map(b => (
               <div key={b.id} className="flex flex-col items-center text-center gap-1">
                 <img src={resolveIconUrl(b.icon)} alt={b.name} className="h-16 w-16 rounded object-contain bg-white/10" loading="lazy" onError={onImgError} />
                 <div className="text-sm font-medium">{b.name}</div>
                 {b.description && <div className="text-xs text-base-subtext">{b.description}</div>}
               </div>
             ))}
+          </div>
+        )}
+        {badgeTab === 'available' && availableBadges.length > 0 && (
+          <div className="grid grid-cols-3 gap-4">
+            {availableBadges.map(b => {
+              const isEarned = earnedBadges.some(eb => eb.id === b.id)
+              return (
+                <div key={b.id} className={`flex flex-col items-center text-center gap-1 ${isEarned ? 'opacity-50' : ''}`}>
+                  <img src={resolveIconUrl(b.icon)} alt={b.name} className="h-16 w-16 rounded object-contain bg-white/10" loading="lazy" onError={onImgError} />
+                  <div className="text-sm font-medium">{b.name}</div>
+                  {b.description && <div className="text-xs text-base-subtext">{b.description}</div>}
+                  {isEarned && <div className="text-xs text-green-400">✓ Earned</div>}
+                </div>
+              )
+            })}
           </div>
         )}
       </section>

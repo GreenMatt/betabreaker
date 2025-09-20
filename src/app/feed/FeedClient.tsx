@@ -12,6 +12,7 @@ type OwnItem = {
   notes: string | null
   climb_id: string
   climb: { name: string, grade: number|null, type: string, color: string|null, gym: { name: string } }
+  user?: { profile_photo: string | null }
 }
 
 type FollowItem = {
@@ -85,7 +86,7 @@ export default function FeedClient({ initialUserId, initialMe, initialFollowing 
     const to = from + PAGE_SIZE - 1
     const { data, error } = await supabase
       .from('climb_logs')
-      .select('id, created_at:date, attempt_type, attempts, personal_rating, notes, climb_id, climb:climbs(name, grade, type, color, gym:gyms(name))')
+      .select('id, created_at:date, attempt_type, attempts, personal_rating, notes, climb_id, climb:climbs(name, grade, type, color, gym:gyms(name)), user:users(profile_photo)')
       .order('date', { ascending: false })
       .range(from, to)
     if (error) throw error
@@ -117,6 +118,8 @@ export default function FeedClient({ initialUserId, initialMe, initialFollowing 
       color: r.color,
       user_name: r.user_name,
       profile_photo: r.profile_photo,
+      bump_count: r.bump_count || 0,
+      bumped: Boolean(r.bumped),
     })) as FollowItem[]
     if (!mounted) return
     setFollowing(prev => page === 0 ? rows : [...prev, ...rows])
@@ -164,6 +167,13 @@ export default function FeedClient({ initialUserId, initialMe, initialFollowing 
               key={item.id}
               activity={item as any}
               variant="following"
+              onBumpChange={(bumped, delta) => {
+                setFollowing(prev => prev.map(followItem =>
+                  followItem.id === item.id
+                    ? { ...followItem, bumped, bump_count: Math.max(0, (followItem.bump_count || 0) + delta) }
+                    : followItem
+                ))
+              }}
             />
           ))}
           {followingHasMore && (

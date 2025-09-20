@@ -21,7 +21,8 @@ export default async function ProfilePage({ params }: { params: { id: string } }
   const targetId = routeId === 'me' ? viewerId : routeId
 
   let profile: Profile | null = null
-  let badges: Array<{ id: string, name: string, icon: string | null, description?: string | null }> = []
+  let earnedBadges: Array<{ id: string, name: string, icon: string | null, description?: string | null }> = []
+  let availableBadges: Array<{ id: string, name: string, icon: string | null, description?: string | null }> = []
   let following: UserLite[] = []
   let followers: UserLite[] = []
 
@@ -40,12 +41,18 @@ export default async function ProfilePage({ params }: { params: { id: string } }
         profile = { id: targetId, name: null, profile_photo: null, route_setter: false }
       }
 
-      // Load badges
-      const { data: badgeData } = await supabase
+      // Load earned badges
+      const { data: earnedBadgeData } = await supabase
         .from('user_badges')
         .select('badge:badges(id,name,icon,description)')
         .eq('user_id', targetId)
-      badges = (badgeData || []).map((r: any) => r.badge)
+      earnedBadges = (earnedBadgeData || []).map((r: any) => r.badge)
+
+      // Load all available badges
+      const { data: availableBadgeData } = await supabase
+        .from('badges')
+        .select('id,name,icon,description')
+      availableBadges = availableBadgeData || []
 
       // Load following
       const { data: followingData } = await supabase
@@ -78,7 +85,8 @@ export default async function ProfilePage({ params }: { params: { id: string } }
     <ProfileClient
       viewerId={viewerId}
       initialProfile={profile}
-      initialBadges={badges}
+      initialEarnedBadges={earnedBadges}
+      initialAvailableBadges={availableBadges}
       initialFollowing={following}
       initialFollowers={followers}
     />
