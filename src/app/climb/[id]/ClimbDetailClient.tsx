@@ -500,7 +500,32 @@ function SendLogModal({ climbId, onClose }: { climbId: string, onClose: () => vo
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="grid gap-1">
               <label className="text-sm text-base-subtext">Attempts</label>
-              <input className="input" type="number" min={1} value={attempts} onChange={e => setAttempts(Math.max(1, Number(e.target.value)))} disabled={attempt!=='sent'} />
+              {attempt === 'sent' ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 text-2xl leading-none flex items-center justify-center select-none"
+                    onClick={() => setAttempts(a => Math.max(1, a - 1))}
+                    disabled={attempts <= 1}
+                    aria-label="Decrease attempts"
+                  >
+                    −
+                  </button>
+                  <div className="w-24 h-12 grid place-items-center rounded-md border border-white/10 bg-white/5 text-lg select-none">
+                    {attempts}
+                  </div>
+                  <button
+                    type="button"
+                    className="h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-2xl leading-none flex items-center justify-center select-none"
+                    onClick={() => setAttempts(a => a + 1)}
+                    aria-label="Increase attempts"
+                  >
+                    +
+                  </button>
+                </div>
+              ) : (
+                <input className="input" type="number" min={1} value={attempts} onChange={e => setAttempts(Math.max(1, Number(e.target.value)))} disabled />
+              )}
             </div>
             <div className="grid gap-1">
               <label className="text-sm text-base-subtext">Community Grade</label>

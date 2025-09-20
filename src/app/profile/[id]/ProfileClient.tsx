@@ -75,6 +75,11 @@ export default function ProfileClient({
   }
 
   const onImgError = (e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }
+  const normalizePhoto = (p: string | null) => {
+    if (!p) return null
+    if (p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:') || p.startsWith('/')) return p
+    return `data:image/*;base64,${p}`
+  }
 
   if (!profile) {
     return (
@@ -89,7 +94,7 @@ export default function ProfileClient({
       <section className="card">
         <div className="flex items-center gap-4">
           {profile.profile_photo ? (
-            <img src={profile.profile_photo} onError={onImgError} alt={displayName()} className="w-16 h-16 rounded-full object-cover" />
+            <img src={normalizePhoto(profile.profile_photo) || '/icons/betabreaker_header.png'} onError={onImgError} alt={displayName()} className="w-16 h-16 rounded-full object-cover" />
           ) : (
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
               <span className="text-white text-lg font-semibold">{displayName()[0]}</span>
@@ -156,7 +161,7 @@ export default function ProfileClient({
           {followTab === 'followers' && followers.length === 0 && <div className="text-base-subtext">No followers yet.</div>}
           {followTab === 'following' && following.map(u => (
             <div key={u.id} className="flex items-center gap-3">
-              <img src={u.profile_photo || '/icons/betabreaker_header.png'} onError={onImgError} alt={u.name || 'User'} className="w-10 h-10 rounded-full object-cover" />
+              <img src={normalizePhoto(u.profile_photo) || '/icons/betabreaker_header.png'} onError={onImgError} alt={u.name || 'User'} className="w-10 h-10 rounded-full object-cover" />
               <div className="flex-1">
                 <div className="font-medium">{u.name || 'Climber'}</div>
               </div>
@@ -165,7 +170,7 @@ export default function ProfileClient({
           ))}
           {followTab === 'followers' && followers.map(u => (
             <div key={u.id} className="flex items-center gap-3">
-              <img src={u.profile_photo || '/icons/betabreaker_header.png'} onError={onImgError} alt={u.name || 'User'} className="w-10 h-10 rounded-full object-cover" />
+              <img src={normalizePhoto(u.profile_photo) || '/icons/betabreaker_header.png'} onError={onImgError} alt={u.name || 'User'} className="w-10 h-10 rounded-full object-cover" />
               <div className="flex-1">
                 <div className="font-medium">{u.name || 'Climber'}</div>
               </div>

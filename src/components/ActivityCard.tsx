@@ -424,7 +424,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
                     {/* Comment Avatar */}
                     {c.profile_photo ? (
                       <img 
-                        src={c.profile_photo} 
+                        src={normalizePhoto(c.profile_photo) || '/icons/betabreaker_header.png'} 
                         alt="Profile" 
                         onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }}
                         className="w-7 h-7 rounded-full object-cover border border-gray-200 flex-shrink-0"

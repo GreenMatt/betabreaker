@@ -41,6 +41,17 @@ export default function UserNav() {
     return () => { cancelled = true }
   }, [user?.id])
 
+  // Normalize a photo value which can be a URL or raw base64
+  function normalizePhoto(photo: string | null | undefined): string | null {
+    if (!photo) return null
+    const p = String(photo)
+    if (p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:') || p.startsWith('/')) return p
+    // Heuristic: treat as base64 blob stored in DB
+    return `data:image/*;base64,${p}`
+  }
+
+  const effectivePhoto = normalizePhoto(dbPhoto) || normalizePhoto((user?.user_metadata as any)?.avatar_url)
+
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!menuRef.current) return
@@ -85,9 +96,9 @@ export default function UserNav() {
           className="relative group p-1 rounded-full transition-all duration-200 hover:ring-2 hover:ring-white/20 hover:ring-offset-2 hover:ring-offset-transparent"
           onClick={() => setMenuOpen(v => !v)}
         >
-          {dbPhoto || user.user_metadata?.avatar_url ? (
+          {effectivePhoto ? (
             <img 
-              src={dbPhoto || user.user_metadata.avatar_url} 
+              src={effectivePhoto} 
               alt="Profile" 
               onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }}
               className="w-8 h-8 rounded-full object-cover border-2 border-white/10 group-hover:border-white/30 transition-colors"
@@ -111,9 +122,9 @@ export default function UserNav() {
             {/* User info header */}
             <div className="px-4 py-4 border-b border-white/10 bg-gradient-to-r from-blue-500/10 to-purple-600/10">
               <div className="flex items-center gap-3">
-                {dbPhoto || user.user_metadata?.avatar_url ? (
+                {effectivePhoto ? (
                   <img 
-                    src={dbPhoto || user.user_metadata.avatar_url} 
+                    src={effectivePhoto} 
                     alt="Profile" 
                     onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }}
                     className="w-10 h-10 rounded-full object-cover border-2 border-white/20"
