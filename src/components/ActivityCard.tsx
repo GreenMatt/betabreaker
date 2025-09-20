@@ -71,6 +71,16 @@ type ActivityCardProps = {
 }
 
 export default function ActivityCard({ activity, variant, onBumpChange, onChanged, onLocalUpdate }: ActivityCardProps) {
+  // Normalize a user photo that may be a URL, data URL, or raw base64
+  const normalizePhoto = (photo: string | null | undefined) => {
+    if (!photo) return null
+    const p = String(photo)
+    if (p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:') || p.startsWith('/')) {
+      return p
+    }
+    // Assume raw base64 string from DB
+    return `data:image/*;base64,${p}`
+  }
   const [editing, setEditing] = useState(false)
   const [localBumped, setLocalBumped] = useState(
     variant === 'own' ? false : !!(activity as FollowActivity | GymActivity).bumped
@@ -169,9 +179,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
       }
       
       if (comment.trim()) {
-        const userPhoto = variant === 'own' && (activity as OwnActivity).user?.profile_photo
-          ? `data:image/*;base64,${(activity as OwnActivity).user?.profile_photo}`
-          : null
+        const userPhoto = normalizePhoto(variant === 'own' ? (activity as OwnActivity).user?.profile_photo : null)
         setLocalComments(prev => [{
           user_name: 'You',
           profile_photo: userPhoto,
@@ -222,8 +230,8 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
     switch (variant) {
       case 'own':
         const own = activity as OwnActivity
-        const userPhoto = own.user?.profile_photo ? `data:image/*;base64,${own.user.profile_photo}` : null
-        console.log('[DEBUG] getDisplayData for own variant, userPhoto:', userPhoto?.substring(0, 50) + '...')
+        const userPhoto = normalizePhoto(own.user?.profile_photo)
+        console.log('[DEBUG] getDisplayData for own variant, userPhoto:', userPhoto ? (userPhoto.substring(0, 50) + '...') : null)
         return {
           userName: 'You',
           userPhoto: userPhoto,
@@ -280,6 +288,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
               <img 
                 src={displayData.userPhoto} 
                 alt="Profile" 
+                onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }}
                 className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 ring-2 ring-transparent group-hover:ring-purple-400/30 transition-all duration-300"
               />
             ) : (
@@ -408,6 +417,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
                       <img 
                         src={c.profile_photo} 
                         alt="Profile" 
+                        onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }}
                         className="w-7 h-7 rounded-full object-cover border border-gray-200 flex-shrink-0"
                       />
                     ) : (

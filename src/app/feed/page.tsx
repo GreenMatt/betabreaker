@@ -9,7 +9,7 @@ export default async function FeedPage() {
   if (session?.user) {
     const { data } = await supabase
       .from('climb_logs')
-      .select('id, date, attempt_type, attempts, personal_rating, notes, climb_id, climb:climbs(name, grade, type, color, gym:gyms(name))')
+      .select('id, date, attempt_type, attempts, personal_rating, notes, climb_id, climb:climbs(name, grade, type, color, gym:gyms(name)), user:users(profile_photo)')
       .order('date', { ascending: false })
       .range(0, 5)
     initialMe = (data || []).map((r: any) => ({
@@ -21,6 +21,7 @@ export default async function FeedPage() {
       notes: r.notes,
       climb_id: r.climb_id,
       climb: r.climb,
+      user: r.user || null,
     }))
     const { data: followingData } = await supabase.rpc('get_following_logs', { page_size: 6, page: 0 })
     initialFollowing = (followingData as any[] || []).map((r: any) => ({

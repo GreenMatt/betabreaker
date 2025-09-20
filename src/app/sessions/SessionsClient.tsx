@@ -568,7 +568,7 @@ export default function SessionsClient({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-gray-800 text-sm">{activityType}</span>
-                          {s.feeling && <FeelingIcon feeling={s.feeling} size="sm" />}
+                          {s.feeling && <AlignedFeelingIcon feeling={s.feeling} size="sm" />}
                           {isToday && (
                             <span className="text-xs px-1.5 py-0.5 rounded-full bg-neon-purple/20 text-neon-purple">
                               Today
@@ -1081,4 +1081,21 @@ function Benchmarks({ userId }: { userId: string }) {
       )}
     </div>
   )
+}
+
+// Aligned emoji version for inline titles
+function AlignedFeelingIcon({ feeling, size = 'md' }: { feeling: 'bad' | 'good' | 'great' | null, size?: 'sm' | 'md' | 'lg' }) {
+  if (!feeling) return null
+  const textSize = size === 'lg' ? 'text-[18px]' : size === 'md' ? 'text-[16px]' : 'text-[14px]'
+  const common = `${textSize} leading-none align-middle inline-block relative top-[1px]`
+  switch (feeling) {
+    case 'bad':
+      return <span className={common} role="img" aria-label="bad">😕</span>
+    case 'good':
+      return <span className={common} role="img" aria-label="good">🙂</span>
+    case 'great':
+      return <span className={common} role="img" aria-label="great">😄</span>
+    default:
+      return null
+  }
 }

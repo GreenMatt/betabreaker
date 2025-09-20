@@ -20,8 +20,21 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const supabaseOrigin = (() => {
+    try {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      return url ? new URL(url).origin : undefined
+    } catch {
+      return undefined
+    }
+  })()
   return (
     <html lang="en">
+      <head>
+        {supabaseOrigin && (
+          <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />
+        )}
+      </head>
       <body className="min-h-screen">
         {/** PWA registration */}
         {/* @ts-expect-error Server Component including Client child */}
