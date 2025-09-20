@@ -9,10 +9,13 @@ import Logo from '@/components/Logo'
 import Stabilizer from '@/components/Stabilizer'
 import VisibilityRefresher from '@/components/VisibilityRefresher'
 import { usePageVisibility } from '@/lib/usePageVisibility'
+import { useEffect } from 'react'
+import { initAppUrlListener } from '@/lib/nativeBridge'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   // Proactively refresh session after returning from background (5+ mins)
   usePageVisibility()
+  useEffect(() => { initAppUrlListener().catch(() => {}) }, [])
 
   return (
     <AuthProvider>

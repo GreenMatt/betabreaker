@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
+import { isNativePlatform, openExternal } from '@/lib/nativeBridge'
 import { startDiagnostics } from '@/lib/authDiagnostics'
 
 type Provider = 'google'
@@ -235,15 +236,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : undefined
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: origin ? `${origin}/api/auth/callback` : undefined,
-          // Ensure authorization code (PKCE) flow instead of implicit hash tokens
-          flowType: 'pkce' as any,
-        }
-      })
-      if (error) setError(error.message)
+      const native = isNativePlatform()
+      const redirectTo = native ? 'io.betabreaker.app://auth/callback' : (origin ? `${origin}/api/auth/callback` : undefined)
+      if (native) {
+        // Use system browser and deep link back to the app
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo,
+            flowType: 'pkce' as any,
+            skipBrowserRedirect: true,
+          }
+        })
+        if (error) setError(error.message)
+        if (data?.url) await openExternal(data.url)
+      } else {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo,
+            flowType: 'pkce' as any,
+          }
+        })
+        if (error) setError(error.message)
+      }
     } finally {
       setLoading(false)
     }
@@ -253,9 +269,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     setLoading(true)
     try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : undefined
+      const native = isNativePlatform()
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined }
+        options: { emailRedirectTo: native ? 'io.betabreaker.app://auth/callback' : origin }
       })
       if (error) setError(error.message)
     } finally {
