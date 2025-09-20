@@ -859,20 +859,13 @@ export default function GymDetailClient({
                 </button>
                 {sentClimbIds.has(c.id) && (
                   <div className="absolute top-2 left-2">
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-600 text-white text-[11px] font-semibold shadow">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-700 text-white text-[11px] font-semibold shadow-lg ring-1 ring-black/40 backdrop-blur-sm">
                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19l11-11-1.5-1.5z"/></svg>
                       Sent
                     </span>
                   </div>
                 )}
-                {/* Status badge on thumbnail */}
-                <div className="absolute top-2 right-2 pointer-events-none">
-                  {((c as any).active_status ?? true) ? (
-                    <span className="px-2 py-1 rounded-md bg-emerald-600 text-white text-[11px] font-semibold shadow">Active</span>
-                  ) : (
-                    <span className="px-2 py-1 rounded-md bg-rose-600 text-white text-[11px] font-semibold shadow">Removed</span>
-                  )}
-                </div>
+                {/* Status moved inline next to title (no thumbnail overlay) */}
                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
                   <button className="btn-primary px-2 py-1 text-xs" onClick={() => addPhoto(c.id)}>Add Photo</button>
                   {isAdmin && <button className="bg-red-500/80 hover:bg-red-600 text-white rounded-md px-2 py-1 text-xs" onClick={() => deleteClimb(c.id)}>Delete</button>}
