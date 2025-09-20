@@ -17,7 +17,9 @@ const nextConfig = {
       "img-src 'self' data: blob: https:",
       "media-src 'self' data: blob: https:",
       "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-eval'",
+      // Allow inline for now to avoid breaking Next's inline runtime chunks
+      // We can move to a nonce-based CSP later via Middleware
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "connect-src 'self' https: wss:",
       "worker-src 'self' blob:",
       "font-src 'self' data:",
