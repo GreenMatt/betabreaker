@@ -53,11 +53,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const rehydrateFromStorage = async () => {
       try {
         if (typeof window === 'undefined') return false
+        // Restrict to this Supabase project ref when possible
+        let projectRef: string | null = null
+        try {
+          const u = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL as string)
+          // typical host: <ref>.supabase.co
+          projectRef = (u.hostname.split('.') || [])[0] || null
+        } catch { projectRef = null }
         // Find any sb-*-auth-token key
         const keys: string[] = []
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i)
-          if (k && /\bsb-.*-auth-token\b/i.test(k)) keys.push(k)
+          if (!k) continue
+          if (/\bsb-.*-auth-token\b/i.test(k)) {
+            if (!projectRef || k.includes(projectRef)) {
+              keys.push(k)
+            }
+          }
         }
         for (const k of keys) {
           try {
@@ -253,7 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     setError(null)
-    try { await fetch('/api/auth/signout', { method: 'POST' }) } catch {}
+    try { await fetch('/api/auth/signout', { method: 'POST', headers: { 'x-csrf': '1' } }) } catch {}
     await supabase.auth.signOut().catch(() => {})
     setSession(null)
     setUser(null)

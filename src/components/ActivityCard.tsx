@@ -231,7 +231,6 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
       case 'own':
         const own = activity as OwnActivity
         const userPhoto = normalizePhoto(own.user?.profile_photo)
-        console.log('[DEBUG] getDisplayData for own variant, userPhoto:', userPhoto ? (userPhoto.substring(0, 50) + '...') : null)
         return {
           userName: 'You',
           userPhoto: userPhoto,

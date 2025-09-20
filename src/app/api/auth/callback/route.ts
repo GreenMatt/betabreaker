@@ -9,9 +9,22 @@ export async function GET(req: Request) {
     const supabase = createRouteHandlerClient({ cookies })
     try { await supabase.auth.exchangeCodeForSession(code) } catch {}
   }
-  const redirectTo = url.searchParams.get('next') || '/'
-  return NextResponse.redirect(new URL(redirectTo, req.url))
+  // Safely derive redirect target. Allow only same-origin relative paths.
+  let redirectTo = url.searchParams.get('next') || '/'
+  try {
+    const dest = new URL(redirectTo, url.origin)
+    const sameOrigin = dest.origin === url.origin
+    const looksProtocolRelative = /^\/\//.test(redirectTo)
+    if (!sameOrigin || looksProtocolRelative) {
+      redirectTo = '/'
+    } else {
+      // Normalize to path + search + hash to avoid leaking origin manipulation
+      redirectTo = dest.pathname + dest.search + dest.hash
+    }
+  } catch {
+    redirectTo = '/'
+  }
+  return NextResponse.redirect(new URL(redirectTo, url.origin))
 }
 
 export const dynamic = 'force-dynamic'
-
