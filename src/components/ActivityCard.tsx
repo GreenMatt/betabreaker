@@ -189,7 +189,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
       }
       
       if (comment.trim()) {
-        const userPhoto = normalizePhoto(variant === 'own' ? ((activity as OwnActivity).user?.profile_photo || authAvatar) : null)
+        const userPhoto = normalizePhoto(variant === 'own' ? (authAvatar || (activity as OwnActivity).user?.profile_photo) : null)
         setLocalComments(prev => [{
           user_name: 'You',
           profile_photo: userPhoto,
@@ -240,7 +240,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
     switch (variant) {
       case 'own':
         const own = activity as OwnActivity
-        const userPhoto = normalizePhoto(own.user?.profile_photo || authAvatar)
+        const userPhoto = normalizePhoto(authAvatar || own.user?.profile_photo)
         return {
           userName: 'You',
           userPhoto: userPhoto,
