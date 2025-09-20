@@ -26,6 +26,8 @@ export default function QuickLogPage() {
     community_grade: 5,
     notes: ''
   })
+  // Keep a text input buffer for attempts so users can clear/edit on mobile
+  const [attemptsInput, setAttemptsInput] = useState<string>('1')
 
   useEffect(() => {
     let mounted = true
@@ -45,6 +47,11 @@ export default function QuickLogPage() {
     })()
     return () => { mounted = false }
   }, [form.gym_id])
+
+  // Keep attempts input string in sync when attempt_type toggles or value changes
+  useEffect(() => {
+    setAttemptsInput(String(form.attempts ?? 1))
+  }, [form.attempts])
 
   function update<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((f) => ({ ...f, [k]: v }))
@@ -120,7 +127,44 @@ export default function QuickLogPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div className="grid gap-1">
             <label className="text-sm text-base-subtext">Attempts</label>
-            <input className="input" type="number" min={1} value={form.attempts} onChange={e => update('attempts', Math.max(1, Number(e.target.value)) as any)} disabled={form.attempt_type !== 'sent'} />
+            <div className="flex items-stretch gap-2">
+              <button
+                type="button"
+                className="px-3 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-50"
+                onClick={() => update('attempts', Math.max(1, (form.attempts || 1) - 1) as any)}
+                disabled={form.attempt_type !== 'sent' || (form.attempts || 1) <= 1}
+                aria-label="Decrease attempts"
+              >
+                −
+              </button>
+              <input
+                className="input w-24 text-center"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={attemptsInput}
+                onChange={e => {
+                  const v = e.target.value
+                  // Accept empty while editing; restrict to digits
+                  if (v === '' || /^\d+$/.test(v)) setAttemptsInput(v)
+                }}
+                onBlur={() => {
+                  const n = parseInt(attemptsInput || '1', 10)
+                  const val = isNaN(n) ? 1 : Math.max(1, n)
+                  setAttemptsInput(String(val))
+                  update('attempts', val as any)
+                }}
+                disabled={form.attempt_type !== 'sent'}
+              />
+              <button
+                type="button"
+                className="px-3 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-50"
+                onClick={() => update('attempts', ((form.attempts || 1) + 1) as any)}
+                disabled={form.attempt_type !== 'sent'}
+                aria-label="Increase attempts"
+              >
+                +
+              </button>
+            </div>
           </div>
           <div className="grid gap-1">
             <label className="text-sm text-base-subtext">Community Grade</label>

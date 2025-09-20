@@ -18,6 +18,7 @@ export default async function GymDetailPage({ params }: { params: { id: string }
   let isAdmin = false
   let claimed = false
   let activity: any[] = []
+  let initialSentIds: string[] = []
 
   if (session?.user) {
     try {
@@ -94,6 +95,21 @@ export default async function GymDetailPage({ params }: { params: { id: string }
             console.error('Failed to load community ratings:', e)
           }
         }
+
+        // Preload which of these climbs the current user has sent/flashed (for overlay)
+        if (ids.length) {
+          try {
+            const { data: sentData } = await supabase
+              .from('climb_logs')
+              .select('climb_id, attempt_type')
+              .eq('user_id', session.user.id)
+              .in('climb_id', ids)
+              .in('attempt_type', ['flashed','sent'])
+            initialSentIds = Array.from(new Set((sentData || []).map((r: any) => String(r.climb_id))))
+          } catch (e) {
+            // ignore
+          }
+        }
       }
     } catch (e) {
       console.error('Failed to load gym data:', e)
@@ -118,6 +134,7 @@ export default async function GymDetailPage({ params }: { params: { id: string }
       initialClaimed={claimed}
       initialActivity={activity}
       currentUserId={session.user.id}
+      initialSentIds={initialSentIds}
     />
   )
 }

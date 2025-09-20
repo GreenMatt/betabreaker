@@ -23,6 +23,7 @@ interface GymDetailClientProps {
   initialClaimed: boolean
   initialActivity: any[]
   currentUserId: string
+  initialSentIds?: string[]
 }
 
 // Thumbnail cache utilities
@@ -101,7 +102,8 @@ export default function GymDetailClient({
   initialIsAdmin,
   initialClaimed,
   initialActivity,
-  currentUserId
+  currentUserId,
+  initialSentIds = []
 }: GymDetailClientProps) {
   const gid = gymId
   const { awardMultipleBadges } = useBadgeAwardContext()
@@ -116,6 +118,7 @@ export default function GymDetailClient({
   const [claiming, setClaiming] = useState(false)
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({})
   const [previews, setPreviews] = useState<Record<string, string | null>>({})
+  const [sentClimbIds, setSentClimbIds] = useState<Set<string>>(new Set(initialSentIds))
   const [lightbox, setLightbox] = useState<{ climbId: string, idx: number, photos: Photo[] } | null>(null)
   const [sections, setSections] = useState<Section[]>(initialSections)
   const [editing, setEditing] = useState<{ open: boolean, climb: Climb | null, form: any }>({ open: false, climb: null, form: null })
@@ -141,6 +144,7 @@ export default function GymDetailClient({
       if (initialClimbs.length > 0) {
         const ids = initialClimbs.map(c => c.id)
         loadPhotoCounts(ids)
+        markUserSends(ids)
       }
       // Set pagination state
       setClimbsPage(0)
@@ -246,6 +250,24 @@ export default function GymDetailClient({
       setPreviews(previewMap)
       climbIds.forEach((cid: string) => fetchPreview(cid))
     }
+  }
+
+  // Fetch which of the given climbs this user has sent (flashed or sent)
+  async function markUserSends(climbIds: string[]) {
+    try {
+      if (!currentUserId || climbIds.length === 0) return
+      const supabase = await getSupabase()
+      const { data, error } = await supabase
+        .from('climb_logs')
+        .select('climb_id, attempt_type')
+        .eq('user_id', currentUserId)
+        .in('climb_id', climbIds)
+        .in('attempt_type', ['flashed','sent'])
+      if (error) return
+      const ids = new Set<string>([...sentClimbIds])
+      for (const row of (data || []) as any[]) ids.add(String(row.climb_id))
+      setSentClimbIds(ids)
+    } catch {}
   }
 
   async function loadActivity(reset: boolean = true) {
@@ -381,6 +403,7 @@ export default function GymDetailClient({
 
         // Load previews for new climbs
         newIds.forEach(cid => fetchPreview(cid))
+        try { await markUserSends(newIds) } catch {}
       }
     }
     setClimbsLoading(false)
@@ -427,10 +450,12 @@ export default function GymDetailClient({
       setClimbsPage(0)
       setClimbsHasMore(normalized.length > CLIMBS_PAGE_SIZE)
 
-      // Load photo counts and previews for filtered climbs
+      // Load photo counts and sent markers for the first page of filtered climbs
       if (normalized.length > 0) {
         const ids = normalized.map(c => c.id)
-        loadPhotoCounts(ids.slice(0, CLIMBS_PAGE_SIZE))
+        const firstPage = ids.slice(0, CLIMBS_PAGE_SIZE)
+        loadPhotoCounts(firstPage)
+        try { await markUserSends(firstPage) } catch {}
       }
     }
     setClimbsLoading(false)
@@ -832,6 +857,22 @@ export default function GymDetailClient({
                     )}
                   </div>
                 </button>
+                {sentClimbIds.has(c.id) && (
+                  <div className="absolute top-2 left-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-600 text-white text-[11px] font-semibold shadow">
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19l11-11-1.5-1.5z"/></svg>
+                      Sent
+                    </span>
+                  </div>
+                )}
+                {/* Status badge on thumbnail */}
+                <div className="absolute top-2 right-2 pointer-events-none">
+                  {((c as any).active_status ?? true) ? (
+                    <span className="px-2 py-1 rounded-md bg-emerald-600 text-white text-[11px] font-semibold shadow">Active</span>
+                  ) : (
+                    <span className="px-2 py-1 rounded-md bg-rose-600 text-white text-[11px] font-semibold shadow">Removed</span>
+                  )}
+                </div>
                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
                   <button className="btn-primary px-2 py-1 text-xs" onClick={() => addPhoto(c.id)}>Add Photo</button>
                   {isAdmin && <button className="bg-red-500/80 hover:bg-red-600 text-white rounded-md px-2 py-1 text-xs" onClick={() => deleteClimb(c.id)}>Delete</button>}
@@ -844,9 +885,9 @@ export default function GymDetailClient({
                     <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: dot }} />
                     <Link href={`/climb/${c.id}`} className="font-semibold truncate hover:underline">{c.name}</Link>
                     {((c as any).active_status ?? true) ? (
-                      <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">Active</span>
+                      <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-emerald-600 text-white shadow-sm">Active</span>
                     ) : (
-                      <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">Removed</span>
+                      <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-rose-600 text-white shadow-sm">Removed</span>
                     )}
                     {c.dyno ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10">Dyno</span> : null}
                   </div>

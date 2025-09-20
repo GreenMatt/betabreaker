@@ -9,6 +9,7 @@ export default function UserNav() {
   const [unread, setUnread] = useState<number>(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [dbPhoto, setDbPhoto] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -22,6 +23,21 @@ export default function UserNav() {
       if (!cancelled) setUnread(count || 0)
     }
     load()
+    return () => { cancelled = true }
+  }, [user?.id])
+
+  // Load profile photo from users table to avoid stale or missing provider avatar
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        if (!user?.id) { setDbPhoto(null); return }
+        const { data } = await supabase.from('users').select('profile_photo').eq('id', user.id).maybeSingle()
+        if (!cancelled) setDbPhoto((data as any)?.profile_photo || null)
+      } catch {
+        if (!cancelled) setDbPhoto(null)
+      }
+    })()
     return () => { cancelled = true }
   }, [user?.id])
 
@@ -69,10 +85,11 @@ export default function UserNav() {
           className="relative group p-1 rounded-full transition-all duration-200 hover:ring-2 hover:ring-white/20 hover:ring-offset-2 hover:ring-offset-transparent"
           onClick={() => setMenuOpen(v => !v)}
         >
-          {user.user_metadata?.avatar_url ? (
+          {dbPhoto || user.user_metadata?.avatar_url ? (
             <img 
-              src={user.user_metadata.avatar_url} 
+              src={dbPhoto || user.user_metadata.avatar_url} 
               alt="Profile" 
+              onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }}
               className="w-8 h-8 rounded-full object-cover border-2 border-white/10 group-hover:border-white/30 transition-colors"
             />
           ) : (
@@ -94,10 +111,11 @@ export default function UserNav() {
             {/* User info header */}
             <div className="px-4 py-4 border-b border-white/10 bg-gradient-to-r from-blue-500/10 to-purple-600/10">
               <div className="flex items-center gap-3">
-                {user.user_metadata?.avatar_url ? (
+                {dbPhoto || user.user_metadata?.avatar_url ? (
                   <img 
-                    src={user.user_metadata.avatar_url} 
+                    src={dbPhoto || user.user_metadata.avatar_url} 
                     alt="Profile" 
+                    onError={(e: any) => { try { e.currentTarget.src = '/icons/betabreaker_header.png' } catch {} }}
                     className="w-10 h-10 rounded-full object-cover border-2 border-white/20"
                   />
                 ) : (
@@ -161,4 +179,3 @@ export default function UserNav() {
     </div>
   )
 }
-

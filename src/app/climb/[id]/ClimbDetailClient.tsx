@@ -497,7 +497,7 @@ function SendLogModal({ climbId, onClose }: { climbId: string, onClose: () => vo
             <label className="flex items-center gap-2 text-sm"><input type="radio" checked={attempt==='sent'} onChange={() => setAttempt('sent')} /> Sent</label>
             <label className="flex items-center gap-2 text-sm"><input type="radio" checked={attempt==='projected'} onChange={() => setAttempt('projected')} /> Projected</label>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="grid gap-1">
               <label className="text-sm text-base-subtext">Attempts</label>
               <input className="input" type="number" min={1} value={attempts} onChange={e => setAttempts(Math.max(1, Number(e.target.value)))} disabled={attempt!=='sent'} />

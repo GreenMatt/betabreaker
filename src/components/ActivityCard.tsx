@@ -71,6 +71,16 @@ type ActivityCardProps = {
 }
 
 export default function ActivityCard({ activity, variant, onBumpChange, onChanged, onLocalUpdate }: ActivityCardProps) {
+  const [authAvatar, setAuthAvatar] = useState<string | null>(null)
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUser()
+        const url = (data.user?.user_metadata as any)?.avatar_url || null
+        if (url) setAuthAvatar(url)
+      } catch {}
+    })()
+  }, [])
   // Normalize a user photo that may be a URL, data URL, or raw base64
   const normalizePhoto = (photo: string | null | undefined) => {
     if (!photo) return null
@@ -179,7 +189,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
       }
       
       if (comment.trim()) {
-        const userPhoto = normalizePhoto(variant === 'own' ? (activity as OwnActivity).user?.profile_photo : null)
+        const userPhoto = normalizePhoto(variant === 'own' ? ((activity as OwnActivity).user?.profile_photo || authAvatar) : null)
         setLocalComments(prev => [{
           user_name: 'You',
           profile_photo: userPhoto,
@@ -230,7 +240,7 @@ export default function ActivityCard({ activity, variant, onBumpChange, onChange
     switch (variant) {
       case 'own':
         const own = activity as OwnActivity
-        const userPhoto = normalizePhoto(own.user?.profile_photo)
+        const userPhoto = normalizePhoto(own.user?.profile_photo || authAvatar)
         return {
           userName: 'You',
           userPhoto: userPhoto,
